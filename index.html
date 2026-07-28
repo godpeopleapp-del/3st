@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Meet the NIVO One Creator Kit: a pocket-sized 4K camera and wireless microphone system for creators.">
+<title>NIVO — Pocket Creator Camera &amp; Wireless Microphone</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+<!-- ══════════════════════════════════════════════════════
+     [규칙 7] CDN 외부 스크립트는 반드시 <head> 안에 넣습니다.
+     <body> 안의 <script src="...">는 플랫폼 분리 시 복사되지 않습니다.
+     ══════════════════════════════════════════════════════ -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+
+<script>
+  window.tailwind = window.tailwind || {};
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { ink: '#08090A', acid: '#C8FF3D' },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          display: ['"Inter Tight"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  :root { --acid: #C8FF3D; --ink: #08090A; }
+
+  /* ══════════════════════════════════════════════════════
+     [규칙 5] 플랫폼 외부(로컬) 권장 레이아웃
+     데스크탑: editor 40% 왼쪽 | preview 60% 오른쪽
+     모바일:   editor 숨김, preview 100%
+     ══════════════════════════════════════════════════════ */
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { display: flex; flex-direction: row; }
+
+  .chuchumon-editor {
+    width: 40%;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+    background: #f5f5f5;
+    border-right: 1px solid #ddd;
+    box-sizing: border-box;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+  }
+  .chuchumon-preview {
+    width: 60%;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-grow: 1;
+    background: #fff;
+    box-sizing: border-box;
+    position: relative;
+  }
+  @media (max-width: 768px) {
+    .chuchumon-editor  { display: none; }
+    .chuchumon-preview { width: 100%; }
+  }
+
+  /* 편집 패널 스타일 */
+  .chuchumon-editor h2 { margin: 0 0 16px; font-size: 15px; font-weight: 700; color: #333; }
+  .chuchumon-editor h3 { margin: 22px 0 10px; font-size: 12px; font-weight: 700; color: #08090A; text-transform: uppercase; letter-spacing: .05em; border-top: 1px solid #e2e2e2; padding-top: 16px; }
+  .chuchumon-editor .field { margin-bottom: 14px; }
+  .chuchumon-editor label { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 600; color: #555; }
+  .chuchumon-editor input[type="text"],
+  .chuchumon-editor textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px;
+    font-size: 13px; box-sizing: border-box; outline: none;
+  }
+  .chuchumon-editor input[type="text"]:focus,
+  .chuchumon-editor textarea:focus { border-color: #666; }
+  .chuchumon-editor textarea { resize: vertical; min-height: 60px; }
+  .chuchumon-editor .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #444; }
+  .chuchumon-editor .field-hint { font-size: 11px; color: #999; margin-top: 4px; }
+
+  /* [규칙 8] 표시/숨김 클래스 토글 */
+  .hidden { display: none !important; }
+
+  /* ══════════════════════════════════════════════════════
+     사이트 디자인 스타일 (모두 .chuchumon-preview 하위에 스코프)
+     ══════════════════════════════════════════════════════ */
+  .chuchumon-preview .font-display { font-family: "Inter Tight", Inter, ui-sans-serif, system-ui, sans-serif; }
+
+  .cp [data-reveal],
+  .cp [data-fade],
+  .cp [data-stagger] > * { opacity: 0; }
+  .cp [data-clip] { clip-path: inset(0 0 100% 0); }
+
+  .chuchumon-preview .line-mask { display: block; overflow: hidden; }
+  .chuchumon-preview .line-inner { display: block; will-change: transform; }
+  .chuchumon-preview .word { display: inline-block; white-space: pre; }
+
+  .chuchumon-preview .marquee { display: flex; width: max-content; will-change: transform; }
+  .chuchumon-preview .marquee > * { flex: none; }
+
+  .chuchumon-preview .faq-body { overflow: hidden; height: 0; }
+  .chuchumon-preview .faq-item.is-open .faq-plus { transform: rotate(135deg); }
+  .chuchumon-preview .faq-plus { transition: transform .5s cubic-bezier(.16,1,.3,1); }
+
+  .chuchumon-preview .hero-media { will-change: transform; }
+  .chuchumon-preview [data-magnetic] { will-change: transform; }
+  .chuchumon-preview .link-underline { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size .5s cubic-bezier(.16,1,.3,1); }
+  .chuchumon-preview .link-underline:hover { background-size: 100% 1px; }
+  .chuchumon-preview .edge-fade { -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
+
+  .chuchumon-preview #cp-grain { position: absolute; inset: -50%; z-index: 150; pointer-events: none; opacity: .05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .chuchumon-preview #cp-progress { position: absolute; top: 0; left: 0; right: 0; height: 2px; z-index: 160; transform: scaleX(0); transform-origin: left center; background: var(--acid); }
+
+  .chuchumon-preview #apSvg text { text-transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cp [data-reveal], .cp [data-fade], .cp [data-stagger] > * { opacity: 1 !important; }
+    .cp [data-clip] { clip-path: none !important; }
+    .chuchumon-preview #cp-grain { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     ① 편집 패널 (.chuchumon-editor)
+     ══════════════════════════════════════════════════════ -->
+<div class="chuchumon-editor">
+  <h2>⚙️ NIVO 사이트 설정</h2>
+
+  <h3>히어로</h3>
+  <div class="field">
+    <label for="in-hero-eyebrow">상단 문구</label>
+    <input type="text" id="in-hero-eyebrow" name="heroEyebrow" value="Create anywhere. Sound incredible." oninput="updateField(this)">
+  </div>
+  <div class="field">
+    <label for="in-hero-title">메인 제목</label>
+    <textarea id="in-hero-title" name="heroTitle" oninput="updateField(this)">Your complete creator studio. In your pocket.</textarea>
+  </div>
+  <div class="field">
+    <label for="in-hero-desc">메인 설명</label>
+    <textarea id="in-hero-desc" name="heroDesc" oninput="updateField(this)">Capture stabilized 4K video and studio-quality sound with one compact camera and wireless microphone system.</textarea>
+  </div>
+  <div class="field">
+    <label for="in-hero-video">히어로 배경 영상 URL</label>
+    <input type="text" id="in-hero-video" name="heroVideoUrl" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/generated-videos/5bd6211c-bd4c-467c-b442-4312cac4712c/1785163661816-ea1193e9-c971-46d9-8e1f-50c0e0ec6b27.mp4" oninput="updateField(this)">
+    <p class="field-hint">⚠️ 외부 URL만 입력하세요. base64 영상 사용 불가.</p>
+  </div>
+
+  <h3>매니페스토</h3>
+  <div class="field">
+    <label for="in-manifesto">본문 텍스트</label>
+    <textarea id="in-manifesto" name="manifesto" oninput="updateField(this)">A camera bag used to be the price of entry. We put the whole studio — optics, stabilization, and broadcast sound — into something that disappears into your pocket. So the only thing left to carry is the idea.</textarea>
+  </div>
+
+  <h3>제품 이미지 (라인업)</h3>
+  <div class="field">
+    <label for="in-prod1-img">제품 1 이미지 URL — NIVO One Camera</label>
+    <input type="text" id="in-prod1-img" name="prod1Img" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/0711a0c1-d01e-461b-a3a4-f1c870278629_3840w.png" oninput="updateField(this)">
+  </div>
+  <div class="field">
+    <label for="in-prod1-price">제품 1 가격</label>
+    <input type="text" id="in-prod1-price" name="prod1Price" value="From $499" oninput="updateField(this)">
+  </div>
+  <div class="field">
+    <label for="in-prod2-img">제품 2 이미지 URL — Mic Mini</label>
+    <input type="text" id="in-prod2-img" name="prod2Img" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/ee86ccc6-e7a9-4a81-a328-5c5894aa8e48_3840w.png" oninput="updateField(this)">
+  </div>
+  <div class="field">
+    <label for="in-prod2-price">제품 2 가격</label>
+    <input type="text" id="in-prod2-price" name="prod2Price" value="From $149" oninput="updateField(this)">
+  </div>
+  <div class="field">
+    <label for="in-prod3-img">제품 3 이미지 URL — Creator Kit</label>
+    <input type="text" id="in-prod3-img" name="prod3Img" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/7b477bfa-78bb-42fe-b3a1-d23ddac27768_3840w.png" oninput="updateField(this)">
+  </div>
+  <div class="field">
+    <label for="in-prod3-price">제품 3 가격</label>
+    <input type="text" id="in-prod3-price" name="prod3Price" value="$649" oninput="updateField(this)">
+  </div>
+
+  <h3>표시 옵션</h3>
+  <div class="field">
+    <div class="checkbox-row">
+      <input type="checkbox" id="in-show-announce" name="showAnnounce" checked onchange="updateField(this)">
+      <label for="in-show-announce" style="margin:0">상단 공지 바 표시</label>
+    </div>
+  </div>
+  <div class="field">
+    <div class="checkbox-row">
+      <input type="checkbox" id="in-show-reviews" name="showReviews" checked onchange="updateField(this)">
+      <label for="in-show-reviews" style="margin:0">리뷰 섹션 표시</label>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     ② 사이트 미리보기 (.chuchumon-preview)
+     원본 NIVO 사이트 전체 (헤더~푸터)
+     ══════════════════════════════════════════════════════ -->
+<div class="chuchumon-preview cp bg-white font-sans text-neutral-900 antialiased selection:bg-lime-200 selection:text-neutral-950">
+
+  <div id="cp-progress"></div>
+  <div id="cp-grain"></div>
+
+  <!-- ANNOUNCE -->
+  <div id="live-announce" class="relative z-[60] overflow-hidden bg-acid py-2.5 text-ink">
+    <div class="marquee" data-marquee data-speed="0.35">
+      <div class="flex items-center gap-8 pr-8 text-[11px] font-medium uppercase tracking-[0.18em]">
+        <span>Free shipping on the NIVO One Creator Kit</span><span class="opacity-40">/</span>
+        <span>Limited launch offer</span><span class="opacity-40">/</span>
+        <span>Ships in 48 hours</span><span class="opacity-40">/</span>
+        <span>2-year creator warranty</span><span class="opacity-40">/</span>
+      </div>
+      <div class="flex items-center gap-8 pr-8 text-[11px] font-medium uppercase tracking-[0.18em]" aria-hidden="true">
+        <span>Free shipping on the NIVO One Creator Kit</span><span class="opacity-40">/</span>
+        <span>Limited launch offer</span><span class="opacity-40">/</span>
+        <span>Ships in 48 hours</span><span class="opacity-40">/</span>
+        <span>2-year creator warranty</span><span class="opacity-40">/</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <header id="siteHeader" class="absolute inset-x-0 top-9 z-50">
+    <nav class="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10" aria-label="Main navigation">
+      <a href="#top" class="nav-ink flex items-center gap-3 text-white" data-cursor="Top">
+        <span class="grid h-9 w-9 place-items-center rounded-full border border-white/30 backdrop-blur">
+          <i data-lucide="aperture" class="h-4 w-4" stroke-width="1.5"></i>
+        </span>
+        <span class="font-display text-sm font-medium tracking-[0.18rem]">NIVO</span>
+      </a>
+      <div class="hidden items-center gap-1 md:flex" id="navLinks">
+        <a href="#products" class="rounded-full px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-white/70 transition hover:text-white">Products</a>
+        <a href="#lineup" class="rounded-full px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-white/70 transition hover:text-white">Creator Kit</a>
+        <a href="#gallery" class="rounded-full px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-white/70 transition hover:text-white">Explore</a>
+        <a href="#stories" class="rounded-full px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-white/70 transition hover:text-white">Community</a>
+        <a href="#support" class="rounded-full px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-white/70 transition hover:text-white">Support</a>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="#lineup" data-magnetic data-cursor="Buy" class="nav-cta hidden overflow-hidden rounded-full bg-white px-5 py-2.5 text-[11px] font-medium uppercase tracking-[0.16em] text-ink transition-colors hover:bg-acid sm:inline-flex">
+          <span class="block">Buy now</span>
+        </a>
+        <button id="menuButton" type="button" class="nav-ink grid h-10 w-10 place-items-center rounded-full border border-white/30 text-white md:hidden" aria-label="Open menu" aria-expanded="false">
+          <i data-lucide="menu" class="h-5 w-5" stroke-width="1.5"></i>
+        </button>
+      </div>
+    </nav>
+    <div id="mobileMenu" class="pointer-events-none mx-5 hidden rounded-2xl border border-white/15 bg-ink/95 p-5 text-white shadow-2xl backdrop-blur md:hidden">
+      <div class="flex flex-col gap-1">
+        <a href="#products" class="rounded-xl px-4 py-3 text-sm hover:bg-white/10">Products</a>
+        <a href="#lineup" class="rounded-xl px-4 py-3 text-sm hover:bg-white/10">Creator Kit</a>
+        <a href="#gallery" class="rounded-xl px-4 py-3 text-sm hover:bg-white/10">Explore</a>
+        <a href="#stories" class="rounded-xl px-4 py-3 text-sm hover:bg-white/10">Community</a>
+        <a href="#support" class="rounded-xl px-4 py-3 text-sm hover:bg-white/10">Support</a>
+        <a href="#lineup" class="mt-3 rounded-xl bg-acid px-4 py-3 text-center text-sm font-medium text-ink">Buy NIVO One</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+
+    <!-- 01 · HERO -->
+    <section id="hero" class="relative h-[100svh] overflow-hidden bg-ink">
+      <div class="hero-media absolute inset-0 will-change-transform">
+        <video id="live-hero-video" src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/generated-videos/5bd6211c-bd4c-467c-b442-4312cac4712c/1785163661816-ea1193e9-c971-46d9-8e1f-50c0e0ec6b27.mp4" poster="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/f4987304-fb2f-48cf-a0b2-5974b2bd47b3_1600w.jpg" muted playsinline preload="metadata" loop autoplay class="absolute inset-0 h-[112%] w-full object-cover"></video>
+      </div>
+      <div class="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-black/10"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30"></div>
+      <div class="relative mx-auto flex h-full max-w-7xl items-end px-5 pb-16 pt-32 sm:px-8 sm:pb-20 lg:items-center lg:px-10 lg:pb-0">
+        <div id="heroCopy" class="max-w-2xl text-white">
+          <p class="mb-6 flex items-center gap-3 font-display text-[11px] font-medium uppercase tracking-[0.28em] text-acid" data-hero-el>
+            <span class="h-px w-10 origin-left bg-acid" id="heroRule"></span>
+            <span id="live-hero-eyebrow">Create anywhere. Sound incredible.</span>
+          </p>
+          <h1 id="live-hero-title" class="font-display max-w-2xl text-[13vw] font-medium leading-[0.88] tracking-[-0.03em] sm:text-6xl lg:text-[5.4rem]">
+            Your complete creator studio. In your pocket.
+          </h1>
+          <p id="live-hero-desc" class="mt-8 max-w-lg text-base leading-7 text-white/65 sm:text-lg" data-hero-el>
+            Capture stabilized 4K video and studio-quality sound with one compact camera and wireless microphone system.
+          </p>
+          <div class="mt-10 flex flex-wrap gap-3" data-hero-el>
+            <a href="#lineup" data-magnetic data-cursor="Shop" class="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 text-[11px] font-medium uppercase tracking-[0.16em] text-ink transition-colors hover:bg-acid">
+              Shop the Creator Kit
+              <i data-lucide="arrow-down-right" class="h-4 w-4 transition-transform duration-500 group-hover:translate-x-0.5 group-hover:translate-y-0.5" stroke-width="1.5"></i>
+            </a>
+            <a href="#gallery" data-magnetic data-cursor="Play" class="group inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/5 px-6 py-3.5 text-[11px] font-medium uppercase tracking-[0.16em] text-white backdrop-blur transition-colors hover:bg-white hover:text-ink">
+              Watch the film
+              <i data-lucide="play" class="h-4 w-4" stroke-width="1.5"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="pointer-events-none absolute bottom-7 left-5 hidden font-display text-[10px] uppercase tracking-[0.28em] text-white/40 sm:left-8 lg:left-10 lg:block" data-hero-el>
+        NIVO One · 4K60 · 3-Axis
+      </div>
+      <div class="absolute bottom-7 right-5 hidden items-center gap-3 text-white/55 sm:right-8 lg:right-10 lg:flex" data-hero-el>
+        <span class="font-display text-[10px] uppercase tracking-[0.28em]">Scroll to explore</span>
+        <span class="relative grid h-9 w-9 place-items-center rounded-full border border-white/25">
+          <i data-lucide="arrow-down" class="h-3.5 w-3.5" id="scrollArrow" stroke-width="1.5"></i>
+        </span>
+      </div>
+    </section>
+
+    <!-- 02 · SPEC TICKER -->
+    <section class="relative z-10 overflow-hidden border-y border-neutral-200 bg-white py-5">
+      <div class="marquee edge-fade" data-marquee data-speed="-0.6">
+        <div class="flex items-center gap-10 pr-10 font-display text-[12px] uppercase tracking-[0.22em] text-neutral-400">
+          <span>4K60 Cinematic</span><span class="text-acid">◆</span>
+          <span>3-Axis Stabilization</span><span class="text-acid">◆</span>
+          <span>AI Subject Tracking</span><span class="text-acid">◆</span>
+          <span>32-Bit Float Audio</span><span class="text-acid">◆</span>
+          <span>Low-Light Mode</span><span class="text-acid">◆</span>
+          <span>One-Tap Pairing</span><span class="text-acid">◆</span>
+        </div>
+        <div class="flex items-center gap-10 pr-10 font-display text-[12px] uppercase tracking-[0.22em] text-neutral-400" aria-hidden="true">
+          <span>4K60 Cinematic</span><span class="text-acid">◆</span>
+          <span>3-Axis Stabilization</span><span class="text-acid">◆</span>
+          <span>AI Subject Tracking</span><span class="text-acid">◆</span>
+          <span>32-Bit Float Audio</span><span class="text-acid">◆</span>
+          <span>Low-Light Mode</span><span class="text-acid">◆</span>
+          <span>One-Tap Pairing</span><span class="text-acid">◆</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 · MANIFESTO -->
+    <section id="manifesto" class="relative bg-white">
+      <div class="mx-auto max-w-6xl px-5 py-[18vh] sm:px-8 lg:px-10">
+        <p class="mb-10 font-display text-[11px] uppercase tracking-[0.28em] text-neutral-400" data-reveal>(01) — The idea</p>
+        <p id="manifestoText" class="font-display text-[7.2vw] font-medium leading-[1.06] tracking-[-0.025em] text-neutral-900 sm:text-5xl lg:text-[3.6rem]">
+          A camera bag used to be the price of entry. We put the whole studio — optics, stabilization, and broadcast sound — into something that disappears into your pocket. So the only thing left to carry is the idea.
+        </p>
+      </div>
+    </section>
+
+    <!-- 04 · NUMBERS -->
+    <section id="products" class="border-t border-neutral-200 bg-white py-20 sm:py-28">
+      <div class="mx-auto grid max-w-7xl gap-14 px-5 sm:px-8 lg:grid-cols-[0.9fr_1.1fr] lg:px-10">
+        <div>
+          <p class="font-display text-[11px] uppercase tracking-[0.28em] text-neutral-400" data-reveal>(02) — Built to travel</p>
+          <h2 class="font-display mt-5 max-w-lg text-4xl font-medium leading-[1.04] tracking-[-0.03em] sm:text-5xl" data-split="lines">Studio standards. Backpack footprint.</h2>
+          <p class="mt-7 max-w-xl text-base leading-7 text-neutral-600" data-reveal>NIVO One was engineered around a single constraint: everything a creator needs has to fit in one hand. A stabilized sensor, a wireless mic system, and a battery that outlasts the shoot.</p>
+          <p class="mt-4 max-w-xl text-base leading-7 text-neutral-600" data-reveal>No rig. No cage. No crew. Pull it out, press record, and the footage is already graded, framed, and mixed the way you would have done it in post.</p>
+          <div class="mt-12 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4" data-stagger>
+            <div class="border-t border-neutral-900/15 pt-4"><p class="font-display text-4xl font-medium tracking-[-0.04em]"><span data-count="118" data-suffix="g">0</span></p><p class="mt-2 font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Body weight</p></div>
+            <div class="border-t border-neutral-900/15 pt-4"><p class="font-display text-4xl font-medium tracking-[-0.04em]"><span data-count="4" data-suffix="K60">0</span></p><p class="mt-2 font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Cinematic capture</p></div>
+            <div class="border-t border-neutral-900/15 pt-4"><p class="font-display text-4xl font-medium tracking-[-0.04em]"><span data-count="240" data-suffix="m">0</span></p><p class="mt-2 font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Wireless mic range</p></div>
+            <div class="border-t border-neutral-900/15 pt-4"><p class="font-display text-4xl font-medium tracking-[-0.04em]"><span data-count="9" data-suffix="h">0</span></p><p class="mt-2 font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Battery, recording</p></div>
+          </div>
+        </div>
+        <div class="relative min-h-[32rem] overflow-hidden rounded-[2rem] bg-neutral-50 p-6 sm:p-10">
+          <div class="pointer-events-none absolute inset-0 opacity-60">
+            <div class="absolute left-1/2 top-1/2 h-[26rem] w-[26rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-neutral-300"></div>
+            <div class="absolute left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-neutral-200"></div>
+            <div class="absolute left-1/2 top-1/2 h-[18rem] w-[18rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-neutral-300"></div>
+          </div>
+          <div class="relative flex h-full flex-col justify-between">
+            <div class="flex items-center justify-between">
+              <span class="rounded-full border border-neutral-300 bg-white px-4 py-2 font-display text-[10px] uppercase tracking-[0.2em]">In the box</span>
+              <i data-lucide="package-open" class="h-6 w-6 text-neutral-400" stroke-width="1.5"></i>
+            </div>
+            <div class="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3" data-stagger>
+              <div class="rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur"><span class="mb-3 block h-1.5 w-1.5 rounded-full bg-acid"></span><p class="text-sm font-medium">NIVO One</p><p class="mt-1 text-xs text-neutral-500">4K camera body</p></div>
+              <div class="rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur"><span class="mb-3 block h-1.5 w-1.5 rounded-full bg-acid"></span><p class="text-sm font-medium">Mic Mini</p><p class="mt-1 text-xs text-neutral-500">Wireless capsule</p></div>
+              <div class="rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur"><span class="mb-3 block h-1.5 w-1.5 rounded-full bg-acid"></span><p class="text-sm font-medium">Receiver</p><p class="mt-1 text-xs text-neutral-500">USB-C dual-ch.</p></div>
+              <div class="rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur"><span class="mb-3 block h-1.5 w-1.5 rounded-full bg-neutral-300"></span><p class="text-sm font-medium">Charge case</p><p class="mt-1 text-xs text-neutral-500">3 full cycles</p></div>
+              <div class="rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur"><span class="mb-3 block h-1.5 w-1.5 rounded-full bg-neutral-300"></span><p class="text-sm font-medium">Wide lens</p><p class="mt-1 text-xs text-neutral-500">0.62× adapter</p></div>
+              <div class="rounded-2xl border border-neutral-200 bg-white/90 p-4 shadow-sm backdrop-blur"><span class="mb-3 block h-1.5 w-1.5 rounded-full bg-neutral-300"></span><p class="text-sm font-medium">Mini tripod</p><p class="mt-1 text-xs text-neutral-500">Folds to grip</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 · LINEUP -->
+    <section id="lineup" class="relative bg-neutral-50 pb-[10vh] pt-20 sm:pt-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+        <p class="font-display text-[11px] uppercase tracking-[0.28em] text-neutral-400" data-reveal>(03) — Meet the lineup</p>
+        <div class="mt-5 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+          <h2 class="font-display max-w-3xl text-4xl font-medium leading-[1.04] tracking-[-0.03em] sm:text-5xl" data-split="lines">One kit. Every story.</h2>
+          <p class="max-w-sm text-base leading-7 text-neutral-600" data-reveal>From daily vlogs to travel films, interviews, tutorials and live content — choose the setup that fits your story.</p>
+        </div>
+      </div>
+      <div class="mx-auto mt-16 max-w-7xl px-5 sm:px-8 lg:px-10" data-stack>
+        <article class="stack-card sticky top-[12vh] mb-6" data-stack-card>
+          <div class="group grid overflow-hidden rounded-[2rem] border border-neutral-200 bg-white lg:grid-cols-[1.3fr_0.7fr]">
+            <div class="relative overflow-hidden">
+              <img id="live-prod1-img" data-parallax-img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/0711a0c1-d01e-461b-a3a4-f1c870278629_3840w.png" alt="NIVO One compact creator camera" class="h-80 w-full scale-110 object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-[1.16] lg:h-[30rem]">
+              <span class="absolute left-6 top-6 rounded-full bg-black/45 px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.2em] text-white backdrop-blur">01</span>
+            </div>
+            <div class="flex min-h-80 flex-col justify-between p-7 sm:p-10">
+              <div class="flex items-center justify-between border-b border-neutral-200 pb-5"><span class="font-display text-[10px] uppercase tracking-[0.2em] text-neutral-400">Pocket creator camera</span><span id="live-prod1-price" class="font-display text-sm tabular-nums">From $499</span></div>
+              <div class="py-10"><h3 class="font-display text-2xl font-medium tracking-[-0.02em]">NIVO One Camera</h3><p class="mt-4 text-base leading-7 text-neutral-600">Shoot stabilized 4K video with fast autofocus, AI subject tracking, strong low-light performance and instant vertical recording.</p></div>
+              <a href="#tech" data-cursor="Open" class="link-underline inline-flex w-fit items-center gap-2 text-sm font-medium">Explore NIVO One <i data-lucide="arrow-up-right" class="h-4 w-4" stroke-width="1.5"></i></a>
+            </div>
+          </div>
+        </article>
+        <article class="stack-card sticky top-[14vh] mb-6" data-stack-card>
+          <div class="group grid overflow-hidden rounded-[2rem] border border-neutral-200 bg-white lg:grid-cols-[1.3fr_0.7fr]">
+            <div class="relative overflow-hidden">
+              <img id="live-prod2-img" data-parallax-img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/ee86ccc6-e7a9-4a81-a328-5c5894aa8e48_3840w.png" alt="NIVO Mic Mini wireless creator microphone" class="h-80 w-full scale-110 object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-[1.16] lg:h-[30rem]">
+              <span class="absolute left-6 top-6 rounded-full bg-black/45 px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.2em] text-white backdrop-blur">02</span>
+            </div>
+            <div class="flex min-h-80 flex-col justify-between p-7 sm:p-10">
+              <div class="flex items-center justify-between border-b border-neutral-200 pb-5"><span class="font-display text-[10px] uppercase tracking-[0.2em] text-neutral-400">Wireless creator audio</span><span id="live-prod2-price" class="font-display text-sm tabular-nums">From $149</span></div>
+              <div class="py-10"><h3 class="font-display text-2xl font-medium tracking-[-0.02em]">NIVO Mic Mini</h3><p class="mt-4 text-base leading-7 text-neutral-600">Capture clean, balanced sound with intelligent noise reduction, one-tap pairing, backup recording and a compact magnetic clip.</p></div>
+              <a href="#tech" data-cursor="Open" class="link-underline inline-flex w-fit items-center gap-2 text-sm font-medium">Explore Mic Mini <i data-lucide="arrow-up-right" class="h-4 w-4" stroke-width="1.5"></i></a>
+            </div>
+          </div>
+        </article>
+        <article class="stack-card sticky top-[16vh]" data-stack-card>
+          <div class="group grid overflow-hidden rounded-[2rem] border border-neutral-800 bg-ink text-white lg:grid-cols-[1.3fr_0.7fr]">
+            <div class="relative overflow-hidden">
+              <img id="live-prod3-img" data-parallax-img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/7b477bfa-78bb-42fe-b3a1-d23ddac27768_3840w.png" alt="Complete NIVO creator camera kit and accessories" class="h-80 w-full scale-110 object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-[1.16] lg:h-[30rem]">
+              <span class="absolute left-6 top-6 rounded-full bg-acid px-3 py-1.5 font-display text-[10px] uppercase tracking-[0.2em] text-ink">03 · Best value</span>
+            </div>
+            <div class="flex min-h-80 flex-col justify-between p-7 sm:p-10">
+              <div class="flex items-center justify-between border-b border-white/15 pb-5"><span class="font-display text-[10px] uppercase tracking-[0.2em] text-white/45">Complete all-in-one setup</span><span id="live-prod3-price" class="font-display text-sm tabular-nums">$649</span></div>
+              <div class="py-10"><h3 class="font-display text-2xl font-medium tracking-[-0.02em]">NIVO One Creator Kit</h3><p class="mt-4 text-base leading-7 text-white/60">Camera, Mic Mini, receiver, charging case, wide-angle lens, mini tripod, wrist strap, carrying case and USB-C cable.</p></div>
+              <a href="#support" data-magnetic data-cursor="Add" class="inline-flex w-fit items-center gap-2 rounded-full bg-acid px-5 py-3 text-[11px] font-medium uppercase tracking-[0.16em] text-ink transition hover:bg-white">Add Creator Kit to cart <i data-lucide="shopping-bag" class="h-4 w-4" stroke-width="1.5"></i></a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 06 · HORIZONTAL GALLERY -->
+    <section id="gallery" class="relative overflow-hidden bg-ink text-white">
+      <div class="mx-auto max-w-3xl px-5 pt-24 text-center sm:px-8 sm:pt-32">
+        <p class="font-display text-[11px] uppercase tracking-[0.28em] text-white/40" data-reveal>(04) — Shot on NIVO One</p>
+        <h2 class="font-display mt-5 text-4xl font-medium tracking-[-0.03em] sm:text-5xl" data-split="lines">Professional video without the production setup.</h2>
+        <p class="mt-6 text-base leading-7 text-white/55" data-reveal>Smooth footage, sharp focus and rich detail in a camera small enough to carry every day. Switch from landscape to portrait in seconds.</p>
+        <div class="mt-9 flex flex-wrap justify-center gap-2.5" data-stagger>
+          <span class="rounded-full border border-white/20 px-4 py-2 font-display text-[10px] uppercase tracking-[0.18em] text-white/70">4K cinematic video</span>
+          <span class="rounded-full border border-white/20 px-4 py-2 font-display text-[10px] uppercase tracking-[0.18em] text-white/70">3-axis stabilization</span>
+          <span class="rounded-full border border-white/20 px-4 py-2 font-display text-[10px] uppercase tracking-[0.18em] text-white/70">AI subject tracking</span>
+          <span class="rounded-full border border-white/20 px-4 py-2 font-display text-[10px] uppercase tracking-[0.18em] text-white/70">Low-light mode</span>
+        </div>
+      </div>
+      <div id="hScroll" class="relative mt-16 h-[100svh] pb-0">
+        <div class="flex h-full items-center overflow-hidden">
+          <div id="hTrack" class="flex w-max items-center gap-5 px-5 sm:gap-7 sm:px-[12vw]">
+            <figure class="relative w-[78vw] overflow-hidden rounded-2xl sm:w-[34rem]">
+              <img data-parallax-img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/cdef4873-8fea-4115-8a82-006a32e63f52_3840w.png" alt="Creator filming cinematic video outdoors" class="h-[46vh] w-full scale-110 object-cover sm:h-[26rem]">
+              <figcaption class="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/70 to-transparent p-5"><span class="font-display text-sm">Golden hour · handheld</span><span class="font-display text-[10px] uppercase tracking-[0.2em] text-white/60">01</span></figcaption>
+            </figure>
+            <figure class="relative w-[78vw] overflow-hidden rounded-2xl sm:w-[26rem]">
+              <img data-parallax-img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/8f231664-7b31-4a1f-8e19-f18dd34d436f_3840w.png" alt="Travel creator recording on location" class="h-[56vh] w-full scale-110 object-cover sm:h-[32rem]">
+              <figcaption class="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/70 to-transparent p-5"><span class="font-display text-sm">Travel · 0.62× wide</span><span class="font-display text-[10px] uppercase tracking-[0.2em] text-white/60">02</span></figcaption>
+            </figure>
+            <figure class="relative w-[78vw] overflow-hidden rounded-2xl sm:w-[34rem]">
+              <img data-parallax-img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/b739edad-d484-48c1-8cef-883153b95f4e_3840w.png" alt="Live creator production scene" class="h-[46vh] w-full scale-110 object-cover sm:h-[26rem]">
+              <figcaption class="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/70 to-transparent p-5"><span class="font-display text-sm">Low light · ISO 6400</span><span class="font-display text-[10px] uppercase tracking-[0.2em] text-white/60">03</span></figcaption>
+            </figure>
+            <figure class="relative w-[78vw] overflow-hidden rounded-2xl sm:w-[26rem]">
+              <img data-parallax-img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/0eca95bb-6ae2-4781-8e51-dc99c29cea24_3840w.png" alt="Independent creator recording content" class="h-[56vh] w-full scale-110 object-cover sm:h-[32rem]">
+              <figcaption class="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/70 to-transparent p-5"><span class="font-display text-sm">Interview · dual mic</span><span class="font-display text-[10px] uppercase tracking-[0.2em] text-white/60">04</span></figcaption>
+            </figure>
+            <div class="flex w-[70vw] shrink-0 flex-col justify-center gap-5 pr-5 sm:w-[24rem]">
+              <p class="font-display text-3xl font-medium leading-[1.1] tracking-[-0.03em] sm:text-4xl">Every frame, straight out of camera.</p>
+              <a href="#stories" data-magnetic data-cursor="More" class="inline-flex w-fit items-center gap-2 rounded-full border border-white/25 px-5 py-3 font-display text-[10px] uppercase tracking-[0.18em] transition hover:bg-white hover:text-ink">See creator stories <i data-lucide="arrow-right" class="h-4 w-4" stroke-width="1.5"></i></a>
+            </div>
+          </div>
+        </div>
+        <div class="pointer-events-none absolute inset-x-5 bottom-8 mx-auto hidden max-w-7xl items-center gap-4 sm:flex sm:px-3">
+          <span class="font-display text-[10px] uppercase tracking-[0.22em] text-white/40">Drag / scroll</span>
+          <span class="relative h-px flex-1 bg-white/15"><span id="hBar" class="absolute inset-y-0 left-0 block w-0 bg-acid"></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 · APERTURE -->
+    <section id="tech" class="relative bg-ink text-white">
+      <div id="apPin" class="relative h-[100svh] overflow-hidden">
+        <img id="apBack" src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/0b747a96-4f78-4e4e-8152-d26201955a6b_3840w.png" alt="" aria-hidden="true" class="absolute inset-0 h-full w-full scale-125 object-cover opacity-70">
+        <div class="absolute inset-0 bg-ink/45"></div>
+        <div class="absolute inset-0 grid place-items-center">
+          <div id="apStage" class="relative h-[86vmin] w-[86vmin] max-h-[92vw] max-w-[92vw]">
+            <svg id="apSvg" viewBox="-120 -120 240 240" class="h-full w-full overflow-visible" aria-hidden="true">
+              <defs>
+                <clipPath id="apClip"><path id="apClipPath" d="M0 0Z"></path></clipPath>
+                <linearGradient id="gBlade" x1="0" y1="0" x2="0.65" y2="1"><stop offset="0%" stop-color="#3a3d43"></stop><stop offset="28%" stop-color="#17191d"></stop><stop offset="52%" stop-color="#25282d"></stop><stop offset="74%" stop-color="#101216"></stop><stop offset="100%" stop-color="#33363c"></stop></linearGradient>
+                <linearGradient id="gEdge" x1="0" y1="0" x2="0.4" y2="1"><stop offset="0%" stop-color="rgba(255,255,255,.85)"></stop><stop offset="40%" stop-color="rgba(255,255,255,.22)"></stop><stop offset="100%" stop-color="rgba(255,255,255,.55)"></stop></linearGradient>
+                <linearGradient id="gBarrel" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4a4e55"></stop><stop offset="45%" stop-color="#15171a"></stop><stop offset="100%" stop-color="#3c4046"></stop></linearGradient>
+                <radialGradient id="gScrim"><stop offset="0%" stop-color="rgba(8,9,10,.80)"></stop><stop offset="55%" stop-color="rgba(8,9,10,.34)"></stop><stop offset="100%" stop-color="rgba(8,9,10,0)"></stop></radialGradient>
+                <radialGradient id="gWell"><stop offset="60%" stop-color="rgba(0,0,0,0)"></stop><stop offset="100%" stop-color="rgba(0,0,0,.85)"></stop></radialGradient>
+                <filter id="fGlint" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="1.6"></feGaussianBlur></filter>
+                <filter id="fDof" x="-15%" y="-15%" width="130%" height="130%"><feGaussianBlur id="apDof" stdDeviation="0"></feGaussianBlur></filter>
+              </defs>
+              <g clip-path="url(#apClip)"><g filter="url(#fDof)"><image id="apPhoto" x="-96" y="-96" width="192" height="192" preserveAspectRatio="xMidYMid slice"></image></g><circle r="96" fill="url(#gWell)"></circle><circle r="96" fill="url(#gScrim)"></circle></g>
+              <path id="apBladeRing" fill="url(#gBlade)" fill-rule="evenodd"></path>
+              <g id="apSeams" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="0.5"></g>
+              <path id="apEdge" fill="none" stroke="url(#gEdge)" stroke-width="0.7"></path>
+              <g id="apGlints" filter="url(#fGlint)"></g>
+              <circle r="92.6" fill="none" stroke="url(#gBarrel)" stroke-width="5"></circle>
+              <circle r="95.4" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="0.6"></circle>
+              <circle r="89.6" fill="none" stroke="rgba(0,0,0,.85)" stroke-width="1.2"></circle>
+              <g id="apKnurl" stroke="rgba(255,255,255,.16)" stroke-width="0.55"></g>
+              <g id="apScale" fill="rgba(255,255,255,.42)" font-size="5.2" font-family="Inter Tight, Inter, sans-serif" text-anchor="middle" letter-spacing="0.5"></g>
+              <path d="M0 -100.5 L2.6 -105.5 L-2.6 -105.5 Z" fill="#C8FF3D"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="pointer-events-none absolute inset-0 grid place-items-center px-6 text-center">
+          <div class="max-w-xl">
+            <p id="apLabel" class="font-display text-[11px] uppercase tracking-[0.28em] text-acid">(05) — Inside the lens</p>
+            <h2 id="apTitle" class="font-display mt-5 text-4xl font-medium leading-[1.04] tracking-[-0.03em] sm:text-6xl">f/1.6 opens the night.</h2>
+            <p id="apCopy" class="mx-auto mt-5 max-w-md text-base leading-7 text-white/60">A wide aperture, a stacked sensor and dual-native ISO. Scroll to open the iris and watch the frame gather light.</p>
+          </div>
+        </div>
+        <div class="pointer-events-none absolute inset-0">
+          <div class="ap-chip absolute left-[6%] top-[18%] rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-xs backdrop-blur sm:left-[12%]"><span class="flex items-center gap-2"><i data-lucide="aperture" class="h-4 w-4 text-acid" stroke-width="1.5"></i> f/1.6 — f/11</span></div>
+          <div class="ap-chip absolute right-[6%] top-[26%] rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-xs backdrop-blur sm:right-[12%]"><span class="flex items-center gap-2"><i data-lucide="focus" class="h-4 w-4 text-acid" stroke-width="1.5"></i> Phase-detect AF</span></div>
+          <div class="ap-chip absolute bottom-[24%] left-[6%] rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-xs backdrop-blur sm:left-[14%]"><span class="flex items-center gap-2"><i data-lucide="move-3d" class="h-4 w-4 text-acid" stroke-width="1.5"></i> 3-axis gimbal</span></div>
+          <div class="ap-chip absolute bottom-[18%] right-[6%] rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-xs backdrop-blur sm:right-[14%]"><span class="flex items-center gap-2"><i data-lucide="audio-lines" class="h-4 w-4 text-acid" stroke-width="1.5"></i> 32-bit float</span></div>
+        </div>
+        <div class="pointer-events-none absolute bottom-8 left-1/2 -translate-x-1/2 font-display text-[10px] uppercase tracking-[0.28em] text-white/35"><span id="apStop">f/11</span> · <span id="apPct">0</span>% open</div>
+      </div>
+    </section>
+
+    <!-- 08 · CREATOR STORIES -->
+    <section id="stories" class="overflow-hidden bg-white py-20 sm:py-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+        <p class="font-display text-[11px] uppercase tracking-[0.28em] text-neutral-400" data-reveal>(06) — Creator stories</p>
+        <div class="mt-5 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <h2 class="font-display max-w-3xl text-4xl font-medium leading-[1.04] tracking-[-0.03em] sm:text-5xl" data-split="lines">Over 100,000 creators, each shooting their own way.</h2>
+          <a href="#support" data-cursor="Join" class="link-underline inline-flex w-fit items-center gap-2 text-sm font-medium">Join the community <i data-lucide="arrow-up-right" class="h-4 w-4" stroke-width="1.5"></i></a>
+        </div>
+        <div class="mt-16 grid gap-x-8 gap-y-16 md:grid-cols-2">
+          <article class="group" data-story>
+            <div class="overflow-hidden rounded-[2rem]" data-clip><img data-parallax-img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/78066529-5e01-476f-b330-dfa9695454f7_3840w.png" alt="Travel creator filming a coastal road" class="aspect-[4/3] w-full scale-110 object-cover transition-transform duration-[1.2s] group-hover:scale-[1.16]"></div>
+            <div class="mt-6 flex items-start justify-between gap-5"><div><p class="font-display text-[10px] uppercase tracking-[0.2em] text-neutral-400">Travel film · Iceland</p><h3 class="font-display mt-2 text-2xl font-medium tracking-[-0.02em]">Ring Road, one hand</h3><p class="mt-3 max-w-md text-base leading-7 text-neutral-600">Eight days, no tripod, no second body. Shot entirely handheld at 4K60 with the gimbal doing the steadying.</p></div><span class="font-display text-5xl font-light text-neutral-200">01</span></div>
+          </article>
+          <article class="group md:mt-24" data-story>
+            <div class="overflow-hidden rounded-[3.5rem] rounded-bl-2xl" data-clip><img data-parallax-img src="https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=1300&q=90" alt="Creator recording a street interview" class="aspect-[4/3] w-full scale-110 object-cover transition-transform duration-[1.2s] group-hover:scale-[1.16]"></div>
+            <div class="mt-6 flex items-start justify-between gap-5"><div><p class="font-display text-[10px] uppercase tracking-[0.2em] text-neutral-400">Street interviews · Tokyo</p><h3 class="font-display mt-2 text-2xl font-medium tracking-[-0.02em]">Two mics, zero retakes</h3><p class="mt-3 max-w-md text-base leading-7 text-neutral-600">Dual-channel wireless with on-capsule backup recording — the Shibuya crossing never once ruined a take.</p></div><span class="font-display text-5xl font-light text-neutral-200">02</span></div>
+          </article>
+          <article class="group" data-story>
+            <div class="overflow-hidden rounded-[2rem]" data-clip><img data-parallax-img src="https://images.unsplash.com/photo-1542038784456-1ea8e935640e?auto=format&fit=crop&w=1300&q=90" alt="Studio tutorial being filmed" class="aspect-[4/3] w-full scale-110 object-cover transition-transform duration-[1.2s] group-hover:scale-[1.16]"></div>
+            <div class="mt-6 flex items-start justify-between gap-5"><div><p class="font-display text-[10px] uppercase tracking-[0.2em] text-neutral-400">Tutorials · Berlin</p><h3 class="font-display mt-2 text-2xl font-medium tracking-[-0.02em]">A studio on a desk</h3><p class="mt-3 max-w-md text-base leading-7 text-neutral-600">Subject tracking keeps the frame locked while the host moves between the bench and the whiteboard.</p></div><span class="font-display text-5xl font-light text-neutral-200">03</span></div>
+          </article>
+          <article class="group md:mt-24" data-story>
+            <div class="overflow-hidden rounded-[3.5rem] rounded-tr-2xl" data-clip><img data-parallax-img src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1300&q=90" alt="Night city creator shoot" class="aspect-[4/3] w-full scale-110 object-cover transition-transform duration-[1.2s] group-hover:scale-[1.16]"></div>
+            <div class="mt-6 flex items-start justify-between gap-5"><div><p class="font-display text-[10px] uppercase tracking-[0.2em] text-neutral-400">Night series · Lisbon</p><h3 class="font-display mt-2 text-2xl font-medium tracking-[-0.02em]">After the sun goes</h3><p class="mt-3 max-w-md text-base leading-7 text-neutral-600">Dual-native ISO and f/1.6 turn empty streets into a usable set long after the light is gone.</p></div><span class="font-display text-5xl font-light text-neutral-200">04</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 09 · REVIEWS -->
+    <section id="reviews" class="overflow-hidden border-y border-neutral-200 bg-neutral-50 py-20 sm:py-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+        <p class="font-display text-[11px] uppercase tracking-[0.28em] text-neutral-400" data-reveal>(07) — Creator reviews</p>
+        <h2 class="font-display mt-5 max-w-3xl text-4xl font-medium leading-[1.04] tracking-[-0.03em] sm:text-5xl" data-split="lines">Trusted by creators on the move.</h2>
+        <p class="mt-5 max-w-xl text-base leading-7 text-neutral-500" data-reveal>Real stories from people filming, sharing and building wherever inspiration takes them.</p>
+      </div>
+      <div class="mt-14 space-y-5">
+        <div class="marquee edge-fade" data-marquee data-speed="-0.5" data-velocity>
+          <div class="flex gap-5 pr-5">
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“NIVO lets me film professional travel content without carrying a full camera bag. I can set it up and start recording in seconds.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-emerald-100 text-sm font-medium text-emerald-800">RK</div><div><p class="text-sm font-medium">Rhea Kapoor</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Travel creator · YouTube</p></div></footer></blockquote>
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“The tracking feels like having a camera operator with me. I can teach, move and stay perfectly framed while filming alone.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-blue-100 text-sm font-medium text-blue-800">PS</div><div><p class="text-sm font-medium">Prayush Sinha</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Education creator · Instagram</p></div></footer></blockquote>
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“The Mic Mini handles busy streets surprisingly well. My voice stays clear, and the backup recording gives me complete confidence.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-sm font-medium text-amber-800">ML</div><div><p class="text-sm font-medium">Maya Lee</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Lifestyle creator · TikTok</p></div></footer></blockquote>
+          </div>
+          <div class="flex gap-5 pr-5" aria-hidden="true">
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“NIVO lets me film professional travel content without carrying a full camera bag. I can set it up and start recording in seconds.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-emerald-100 text-sm font-medium text-emerald-800">RK</div><div><p class="text-sm font-medium">Rhea Kapoor</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Travel creator · YouTube</p></div></footer></blockquote>
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“The tracking feels like having a camera operator with me. I can teach, move and stay perfectly framed while filming alone.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-blue-100 text-sm font-medium text-blue-800">PS</div><div><p class="text-sm font-medium">Prayush Sinha</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Education creator · Instagram</p></div></footer></blockquote>
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“The Mic Mini handles busy streets surprisingly well. My voice stays clear, and the backup recording gives me complete confidence.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-sm font-medium text-amber-800">ML</div><div><p class="text-sm font-medium">Maya Lee</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Lifestyle creator · TikTok</p></div></footer></blockquote>
+          </div>
+        </div>
+        <div class="marquee edge-fade" data-marquee data-speed="0.4" data-velocity>
+          <div class="flex gap-5 pr-5">
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“I shoot a weekly series solo. The kit replaced a gimbal, a shotgun mic and two lav packs — and it charges from the same cable as my laptop.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-violet-100 text-sm font-medium text-violet-800">IA</div><div><p class="text-sm font-medium">Irfan Aga</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Documentary · Vimeo</p></div></footer></blockquote>
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“Vertical and horizontal from the same take. My editor stopped asking me to reshoot for the second platform.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-cyan-100 text-sm font-medium text-cyan-800">MI</div><div><p class="text-sm font-medium">Mira Ingawale</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Food creator · Reels</p></div></footer></blockquote>
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“Nine hours of recording on one charge got me through a full festival day without hunting for an outlet.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-rose-100 text-sm font-medium text-rose-800">NS</div><div><p class="text-sm font-medium">Nelson Sequeira</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Live events · Twitch</p></div></footer></blockquote>
+          </div>
+          <div class="flex gap-5 pr-5" aria-hidden="true">
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“I shoot a weekly series solo. The kit replaced a gimbal, a shotgun mic and two lav packs — and it charges from the same cable as my laptop.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-violet-100 text-sm font-medium text-violet-800">IA</div><div><p class="text-sm font-medium">Irfan Aga</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Documentary · Vimeo</p></div></footer></blockquote>
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“Vertical and horizontal from the same take. My editor stopped asking me to reshoot for the second platform.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-cyan-100 text-sm font-medium text-cyan-800">MI</div><div><p class="text-sm font-medium">Mira Ingawale</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Food creator · Reels</p></div></footer></blockquote>
+            <blockquote class="flex w-[86vw] flex-col justify-between rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm sm:w-[26rem]"><p class="text-base leading-7 text-neutral-700">“Nine hours of recording on one charge got me through a full festival day without hunting for an outlet.”</p><footer class="mt-8 flex items-center gap-3 border-t border-neutral-100 pt-5"><div class="grid h-10 w-10 place-items-center rounded-full bg-rose-100 text-sm font-medium text-rose-800">NS</div><div><p class="text-sm font-medium">Nelson Sequeira</p><p class="font-display text-[10px] uppercase tracking-[0.18em] text-neutral-400">Live events · Twitch</p></div></footer></blockquote>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 · FAQ -->
+    <section id="faq" class="relative overflow-hidden bg-neutral-100 py-20 sm:py-28">
+      <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+        <div class="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
+          <div class="lg:sticky lg:top-28 lg:self-start">
+            <p class="font-display text-[11px] uppercase tracking-[0.28em] text-neutral-400" data-reveal>(08) — Questions</p>
+            <h2 class="font-display mt-5 max-w-xl text-4xl font-medium leading-[1.04] tracking-[-0.03em] sm:text-5xl" data-split="lines">Everything you need to know before you press record.</h2>
+            <p class="mt-6 max-w-lg text-base leading-7 text-neutral-600" data-reveal>Shipping, compatibility, warranty and what actually comes in the box.</p>
+            <a href="#support" data-magnetic data-cursor="Ask" class="mt-9 inline-flex items-center gap-2 rounded-full bg-acid px-6 py-3.5 text-[11px] font-medium uppercase tracking-[0.16em] text-ink transition hover:bg-ink hover:text-white" data-reveal>Ask us anything <i data-lucide="arrow-up-right" class="h-4 w-4" stroke-width="1.5"></i></a>
+          </div>
+          <div class="divide-y divide-neutral-300 border-y border-neutral-300" id="faqList">
+            <div class="faq-item is-open">
+              <button type="button" class="faq-head flex w-full cursor-pointer items-center justify-between gap-6 py-6 text-left sm:py-7" aria-expanded="true"><span class="font-display text-lg tracking-[-0.01em] text-neutral-900 sm:text-xl">What is in the NIVO One Creator Kit?</span><span class="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-neutral-300 bg-white"><svg class="faq-plus h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span></button>
+              <div class="faq-body"><div class="max-w-2xl pb-7 pr-12 text-base leading-7 text-neutral-600">Camera body, Mic Mini capsule, dual-channel receiver, charging case, 0.62× wide-angle adapter, folding mini tripod, wrist strap, carry case and a USB-C cable.</div></div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-head flex w-full cursor-pointer items-center justify-between gap-6 py-6 text-left sm:py-7" aria-expanded="false"><span class="font-display text-lg tracking-[-0.01em] text-neutral-900 sm:text-xl">Does it work with my phone and laptop?</span><span class="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-neutral-300 bg-white"><svg class="faq-plus h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span></button>
+              <div class="faq-body"><div class="max-w-2xl pb-7 pr-12 text-base leading-7 text-neutral-600">Yes. The receiver is USB-C and class-compliant, so it works with iOS, Android, macOS and Windows without drivers. Footage transfers over USB-C or Wi-Fi to the NIVO app.</div></div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-head flex w-full cursor-pointer items-center justify-between gap-6 py-6 text-left sm:py-7" aria-expanded="false"><span class="font-display text-lg tracking-[-0.01em] text-neutral-900 sm:text-xl">How long does the battery actually last?</span><span class="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-neutral-300 bg-white"><svg class="faq-plus h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span></button>
+              <div class="faq-body"><div class="max-w-2xl pb-7 pr-12 text-base leading-7 text-neutral-600">Around 9 hours of continuous 4K30 recording, or roughly 5 hours at 4K60 with stabilization active. The charging case adds three more full cycles.</div></div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-head flex w-full cursor-pointer items-center justify-between gap-6 py-6 text-left sm:py-7" aria-expanded="false"><span class="font-display text-lg tracking-[-0.01em] text-neutral-900 sm:text-xl">Is it weather-sealed?</span><span class="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-neutral-300 bg-white"><svg class="faq-plus h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span></button>
+              <div class="faq-body"><div class="max-w-2xl pb-7 pr-12 text-base leading-7 text-neutral-600">The body and the mic capsule are IP54 rated — fine for rain, dust and coastal spray. They are not designed for submersion.</div></div>
+            </div>
+            <div class="faq-item">
+              <button type="button" class="faq-head flex w-full cursor-pointer items-center justify-between gap-6 py-6 text-left sm:py-7" aria-expanded="false"><span class="font-display text-lg tracking-[-0.01em] text-neutral-900 sm:text-xl">When does it ship, and what about returns?</span><span class="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-neutral-300 bg-white"><svg class="faq-plus h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg></span></button>
+              <div class="faq-body"><div class="max-w-2xl pb-7 pr-12 text-base leading-7 text-neutral-600">Kits ship free within 48 hours during the launch window. Returns are open for 30 days, and every kit carries a 2-year creator warranty.</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 · STATEMENT -->
+    <section id="statement" class="relative overflow-hidden bg-neutral-100 py-24 sm:py-32">
+      <div class="mx-auto max-w-6xl px-5 text-center sm:px-8">
+        <p class="text-sm text-neutral-500" data-reveal>Designed for the story you have not filmed yet.</p>
+        <h2 class="font-display mx-auto mt-10 max-w-5xl text-[16vw] font-medium leading-[0.84] tracking-[-0.045em] text-neutral-900 sm:text-8xl lg:text-[9.5rem]" data-statement>
+          <span class="line-mask"><span class="line-inner">CREATE</span></span>
+          <span class="line-mask"><span class="line-inner">ANY</span></span>
+          <span class="line-mask"><span class="line-inner text-neutral-400">WHERE</span></span>
+        </h2>
+        <div class="mt-14 flex flex-wrap justify-center gap-3" data-stagger>
+          <a href="#support" data-magnetic data-cursor="Mail" class="inline-flex items-center gap-2 rounded-full border border-neutral-400 bg-white px-6 py-3.5 text-[11px] font-medium uppercase tracking-[0.16em] transition hover:bg-ink hover:text-white">Email us <i data-lucide="mail" class="h-4 w-4" stroke-width="1.5"></i></a>
+          <a href="#lineup" data-magnetic data-cursor="Buy" class="inline-flex items-center gap-2 rounded-full bg-acid px-6 py-3.5 text-[11px] font-medium uppercase tracking-[0.16em] text-ink transition hover:bg-ink hover:text-white">Buy the Creator Kit <i data-lucide="arrow-up-right" class="h-4 w-4" stroke-width="1.5"></i></a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="relative overflow-hidden bg-ink text-white" id="support" style="background-image: radial-gradient(circle at 72% 60%, rgba(255,255,255,.03), transparent 32%), radial-gradient(circle at 10% 90%, rgba(255,255,255,.02), transparent 26%)">
+    <div class="mx-auto max-w-7xl px-5 pt-10 sm:px-8 lg:px-10">
+      <div class="flex items-center gap-5"><span class="h-px flex-1 origin-left bg-white/20" data-line></span><span class="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/25"><i data-lucide="sparkle" class="h-5 w-5" stroke-width="1.5"></i></span></div>
+      <div class="grid grid-cols-2 gap-x-8 gap-y-12 py-14 md:grid-cols-4 lg:gap-x-20" data-stagger>
+        <div><h3 class="flex items-center gap-4 font-display text-[10px] uppercase tracking-[0.22em]"><span class="h-1 w-1 rounded-full bg-acid"></span>Products</h3><nav class="mt-7 flex flex-col gap-4 text-base text-white/55" aria-label="Products"><a href="#products" class="w-fit transition hover:text-white">NIVO One</a><a href="#lineup" class="w-fit transition hover:text-white">NIVO Mic Mini</a><a href="#lineup" class="w-fit transition hover:text-white">Creator Kit</a><a href="#" class="w-fit transition hover:text-white">Accessories</a><a href="#" class="w-fit transition hover:text-white">Compare products</a></nav></div>
+        <div><h3 class="flex items-center gap-4 font-display text-[10px] uppercase tracking-[0.22em]"><span class="h-1 w-1 rounded-full bg-acid"></span>Creators</h3><nav class="mt-7 flex flex-col gap-4 text-base text-white/55" aria-label="Creators"><a href="#stories" class="w-fit transition hover:text-white">Community</a><a href="#" class="w-fit transition hover:text-white">Tutorials</a><a href="#" class="w-fit transition hover:text-white">Creator stories</a><a href="#" class="w-fit transition hover:text-white">Challenges</a><a href="#" class="w-fit transition hover:text-white">Ambassador program</a></nav></div>
+        <div><h3 class="flex items-center gap-4 font-display text-[10px] uppercase tracking-[0.22em]"><span class="h-1 w-1 rounded-full bg-acid"></span>Support</h3><nav class="mt-7 flex flex-col gap-4 text-base text-white/55" aria-label="Support"><a href="#faq" class="w-fit transition hover:text-white">Help center</a><a href="#" class="w-fit transition hover:text-white">Product setup</a><a href="#" class="w-fit transition hover:text-white">Downloads</a><a href="#" class="w-fit transition hover:text-white">Warranty</a><a href="#" class="w-fit transition hover:text-white">Contact support</a></nav></div>
+        <div><h3 class="flex items-center gap-4 font-display text-[10px] uppercase tracking-[0.22em]"><span class="h-1 w-1 rounded-full bg-acid"></span>Company</h3><nav class="mt-7 flex flex-col gap-4 text-base text-white/55" aria-label="Company"><a href="#" class="w-fit transition hover:text-white">About NIVO</a><a href="#" class="w-fit transition hover:text-white">Careers</a><a href="#" class="w-fit transition hover:text-white">Press</a><a href="#" class="w-fit transition hover:text-white">Sustainability</a><a href="#" class="w-fit transition hover:text-white">Retail partners</a></nav></div>
+      </div>
+      <div class="relative grid min-h-72 overflow-hidden pb-10 pt-6 lg:grid-cols-[0.9fr_1.5fr] lg:items-end">
+        <div class="relative z-10 max-w-md">
+          <h2 class="font-display text-2xl leading-tight tracking-[-0.02em] sm:text-3xl" data-split="lines">Built for creators. Straight to your inbox.</h2>
+          <p class="mt-4 text-base leading-7 text-white/55" data-reveal>Product updates, creator tips and launch-only offers.</p>
+          <form id="subForm" class="mt-7 flex h-14 max-w-sm overflow-hidden rounded-xl border border-white/25 bg-white/[0.03] transition-colors focus-within:border-acid" action="#" method="post">
+            <label for="footer-email" class="sr-only">Enter your email</label>
+            <input id="footer-email" name="email" type="email" required placeholder="Enter your email" class="min-w-0 flex-1 bg-transparent px-4 text-base text-white outline-none placeholder:text-white/40">
+            <button type="submit" aria-label="Subscribe" data-cursor="Send" class="grid w-14 shrink-0 place-items-center border-l border-white/20 transition hover:bg-acid hover:text-ink"><i data-lucide="arrow-right" class="h-5 w-5" stroke-width="1.5"></i></button>
+          </form>
+          <p id="subMsg" class="mt-3 h-5 font-display text-[10px] uppercase tracking-[0.2em] text-acid opacity-0">You are on the list.</p>
+        </div>
+        <div class="pointer-events-none relative mt-16 h-48 lg:mt-0 lg:h-64">
+          <svg viewBox="0 0 900 320" aria-hidden="true" class="absolute inset-x-0 bottom-0 h-full w-full text-white/[0.09]" fill="none"><path d="M20 190C112 22 224 36 337 126C449 215 536 27 666 59C760 82 827 163 884 211" stroke="currentColor" stroke-width="1" stroke-dasharray="2 5"></path><path d="M18 207C109 39 225 53 337 142C447 229 538 45 665 76C759 98 826 179 884 226" stroke="currentColor" stroke-width="1" stroke-dasharray="2 5"></path><path d="M16 224C108 57 224 70 337 159C447 245 539 63 665 92C757 114 826 195 884 241" stroke="currentColor" stroke-width="1" stroke-dasharray="2 5"></path></svg>
+          <p id="footerWord" class="absolute inset-x-0 bottom-0 whitespace-nowrap text-center font-display text-8xl font-light leading-none tracking-[-0.04em] sm:text-9xl lg:text-[12rem]" style="-webkit-text-stroke: 1px rgba(255,255,255,.14); color: rgba(255,255,255,.06)">NIVO</p>
+        </div>
+      </div>
+    </div>
+    <div class="border-t border-white/15">
+      <div class="mx-auto flex max-w-7xl flex-col gap-7 px-5 py-7 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+        <div class="flex items-center gap-5"><a href="#top" aria-label="NIVO home" data-magnetic data-cursor="Top" class="grid h-12 w-12 place-items-center rounded-full border border-white/25 font-display text-2xl font-light transition hover:border-acid hover:text-acid">N</a><p class="text-sm text-white/50">© 2026 NIVO</p></div>
+        <div class="flex flex-wrap items-center gap-3">
+          <a href="#" aria-label="Instagram" data-magnetic class="grid h-11 w-11 place-items-center rounded-full border border-white/25 text-white/70 transition hover:border-acid hover:text-acid"><svg viewBox="0 0 24 24" fill="currentColor" class="h-[15px] w-[15px]"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24s3.668-.014 4.948-.072c4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"></path></svg></a>
+          <a href="#" aria-label="YouTube" data-magnetic class="grid h-11 w-11 place-items-center rounded-full border border-white/25 text-white/70 transition hover:border-acid hover:text-acid"><svg viewBox="0 0 24 24" fill="currentColor" class="h-[15px] w-[15px]"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"></path></svg></a>
+          <a href="#" aria-label="X" data-magnetic class="grid h-11 w-11 place-items-center rounded-full border border-white/25 text-white/70 transition hover:border-acid hover:text-acid"><svg viewBox="0 0 24 24" fill="currentColor" class="h-[14px] w-[14px]"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932 6.064-6.933zm-1.291 19.49h2.039L6.486 3.24H4.298l13.312 17.403z"></path></svg></a>
+        </div>
+        <nav class="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm text-white/50" aria-label="Legal"><a href="#" class="transition hover:text-white">Privacy</a><span class="text-white/25">/</span><a href="#" class="transition hover:text-white">Terms</a><span class="text-white/25">/</span><a href="#" class="transition hover:text-white">Accessibility</a></nav>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════
+     인라인 스크립트 (양쪽 iframe에 복사됨 — 규칙 2/3/4/6/8)
+     ══════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  'use strict';
+
+  /* =========================================================
+     플랫폼 데이터 & 편집 인터페이스 (규칙 2/3/4)
+     ========================================================= */
+  var templateData = {
+    heroEyebrow:  'Create anywhere. Sound incredible.',
+    heroTitle:    'Your complete creator studio. In your pocket.',
+    heroDesc:     'Capture stabilized 4K video and studio-quality sound with one compact camera and wireless microphone system.',
+    heroVideoUrl: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/generated-videos/5bd6211c-bd4c-467c-b442-4312cac4712c/1785163661816-ea1193e9-c971-46d9-8e1f-50c0e0ec6b27.mp4',
+    manifesto:    'A camera bag used to be the price of entry. We put the whole studio — optics, stabilization, and broadcast sound — into something that disappears into your pocket. So the only thing left to carry is the idea.',
+    prod1Img:     'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/0711a0c1-d01e-461b-a3a4-f1c870278629_3840w.png',
+    prod1Price:   'From $499',
+    prod2Img:     'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/ee86ccc6-e7a9-4a81-a328-5c5894aa8e48_3840w.png',
+    prod2Price:   'From $149',
+    prod3Img:     'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/7b477bfa-78bb-42fe-b3a1-d23ddac27768_3840w.png',
+    prod3Price:   '$649',
+    showAnnounce: true,
+    showReviews:  true
+  };
+
+  /* [규칙 2] 플랫폼 데이터 전송 */
+  window.sendUpdate = function (data) {
+    window.parent.postMessage({ type: 'CHUCHUMON_UPDATE', data: data }, '*');
+  };
+
+  /* [규칙 4] input 변경 핸들러 — HTML 속성 동기화 포함 */
+  window.updateField = function (el) {
+    var value = el.type === 'checkbox' ? el.checked : el.value;
+    templateData[el.name] = value;
+    if (el.type === 'checkbox') {
+      value ? el.setAttribute('checked', 'checked') : el.removeAttribute('checked');
+    } else {
+      // textarea/text 모두 속성 동기화
+      if (el.tagName === 'TEXTAREA') el.textContent = value;
+      else el.setAttribute('value', value);
+    }
+    window.sendUpdate(templateData);
+    if (document.querySelector('.chuchumon-preview')) window.applyToPreview(templateData);
+  };
+
+  /* [규칙 2] 플랫폼 수신 인터페이스 */
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.data.type !== 'CHUCHUMON_UPDATE') return;
+    window.applyToPreview(e.data.data);
+  });
+
+  /* [규칙 3] 미리보기 DOM 업데이트 — .chuchumon-editor 셀렉터 사용 금지 */
+  window.applyToPreview = function (data) {
+    function txt(id, v) { var el = document.getElementById(id); if (el && v !== undefined) el.textContent = v; }
+    function src(id, v) { var el = document.getElementById(id); if (el && v !== undefined) el.setAttribute('src', v); }
+
+    txt('live-hero-eyebrow', data.heroEyebrow);
+    txt('live-hero-title', data.heroTitle);
+    txt('live-hero-desc', data.heroDesc);
+    txt('manifestoText', data.manifesto);
+    txt('live-prod1-price', data.prod1Price);
+    txt('live-prod2-price', data.prod2Price);
+    txt('live-prod3-price', data.prod3Price);
+
+    src('live-prod1-img', data.prod1Img);
+    src('live-prod2-img', data.prod2Img);
+    src('live-prod3-img', data.prod3Img);
+
+    // [규칙 9] 영상 src 교체 — setAttribute + load()
+    if (data.heroVideoUrl !== undefined) {
+      var v = document.getElementById('live-hero-video');
+      if (v) { v.setAttribute('src', data.heroVideoUrl); v.load(); }
+    }
+
+    // [규칙 8] classList 토글 표시/숨김
+    if (data.showAnnounce !== undefined) {
+      var a = document.getElementById('live-announce');
+      if (a) { data.showAnnounce ? a.classList.remove('hidden') : a.classList.add('hidden'); }
+    }
+    if (data.showReviews !== undefined) {
+      var r = document.getElementById('reviews');
+      if (r) { data.showReviews ? r.classList.remove('hidden') : r.classList.add('hidden'); }
+    }
+  };
+
+  /* =========================================================
+     사이트 스크롤 경험 — 미리보기 iframe 안에서만 실행
+     .chuchumon-editor만 있는 편집 iframe에서는 스킵
+     ========================================================= */
+  var previewRoot = document.querySelector('.chuchumon-preview');
+  if (!previewRoot) return; // 편집 패널 iframe이면 종료
+
+  var hasGSAP = typeof window.gsap !== 'undefined' && typeof window.ScrollTrigger !== 'undefined';
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // [규칙 6] scroller: 플랫폼 미리보기 iframe에서 html/body는 overflow:hidden.
+  // 실제 스크롤은 .chuchumon-preview div가 담당.
+  var scroller = document.querySelector('.chuchumon-preview') || window;
+
+  function boot() {
+    if (window.lucide) lucide.createIcons();
+
+    initMenu();
+    initFAQ();
+    initForm();
+
+    if (!hasGSAP || reduced) {
+      previewRoot.classList.remove('cp');
+      return;
+    }
+
+    gsap.registerPlugin(ScrollTrigger);
+    gsap.config({ nullTargetWarn: false });
+    // 모든 ScrollTrigger의 기본 scroller를 미리보기 div로 지정 [규칙 6]
+    ScrollTrigger.defaults({ scroller: scroller });
+
+    var EASE = 'expo.out';
+    var isTouch = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+
+    /* ---- text splitting ---- */
+    function splitWords(el) {
+      var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+      var nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(function (node) {
+        if (!node.nodeValue.trim()) return;
+        var frag = document.createDocumentFragment();
+        node.nodeValue.split(/(\s+)/).forEach(function (chunk) {
+          if (!chunk) return;
+          if (/^\s+$/.test(chunk)) { frag.appendChild(document.createTextNode(chunk)); return; }
+          var s = document.createElement('span'); s.className = 'word'; s.textContent = chunk; frag.appendChild(s);
+        });
+        node.parentNode.replaceChild(frag, node);
+      });
+      return Array.prototype.slice.call(el.querySelectorAll('.word'));
+    }
+    function splitLines(el, force) {
+      if (el.dataset.splitDone && !force) return Array.prototype.slice.call(el.querySelectorAll('.line-inner'));
+      if (!el.dataset.origText) el.dataset.origText = el.textContent.replace(/\s+/g, ' ').trim();
+      if (force) { el.innerHTML = el.dataset.origText; delete el.dataset.splitDone; }
+      var words = splitWords(el); if (!words.length) return [];
+      var lines = [], current = null, lastTop = null;
+      words.forEach(function (w) {
+        var top = Math.round(w.offsetTop);
+        if (lastTop === null || Math.abs(top - lastTop) > 4) { current = []; lines.push(current); lastTop = top; }
+        current.push(w);
+      });
+      el.innerHTML = ''; var inners = [];
+      lines.forEach(function (group) {
+        var mask = document.createElement('span'); mask.className = 'line-mask';
+        var inner = document.createElement('span'); inner.className = 'line-inner';
+        inner.textContent = group.map(function (w) { return w.textContent; }).join(' ');
+        mask.appendChild(inner); el.appendChild(mask); inners.push(inner);
+      });
+      el.dataset.splitDone = '1'; el.style.opacity = '1';
+      return inners;
+    }
+
+    /* ---- hero entrance ---- */
+    (function heroIntro() {
+      var h1 = previewRoot.querySelector('#heroCopy h1');
+      var lines = h1 ? splitLines(h1) : [];
+      var tl = gsap.timeline();
+      tl.fromTo('#heroImg, #live-hero-video', { scale: 1.2, filter: 'brightness(0.5)' }, { scale: 1, filter: 'brightness(1)', duration: 1.6, ease: 'expo.out' }, 0)
+        .fromTo('#heroRule', { scaleX: 0 }, { scaleX: 1, duration: 1.0, ease: EASE }, 0.2)
+        .fromTo(lines, { yPercent: 118 }, { yPercent: 0, duration: 1.2, ease: EASE, stagger: 0.09 }, 0.25)
+        .fromTo('[data-hero-el]', { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 1.0, ease: EASE, stagger: 0.08 }, 0.5);
+      gsap.to('#scrollArrow', { y: 5, duration: 0.9, ease: 'sine.inOut', repeat: -1, yoyo: true });
+    })();
+
+    /* ---- hero scroll parallax ---- */
+    gsap.timeline({ scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true } })
+      .to('#live-hero-video', { yPercent: 12, scale: 1.12, ease: 'none' }, 0)
+      .to('#heroCopy', { yPercent: -22, opacity: 0, ease: 'none' }, 0);
+
+    /* ---- nav theme swap ---- */
+    (function nav() {
+      var header = previewRoot.querySelector('#siteHeader');
+      var darkSections = previewRoot.querySelectorAll('#hero, #gallery, #tech, #support');
+      function setTheme(onDark) {
+        header.querySelectorAll('.nav-ink').forEach(function (el) {
+          el.classList.toggle('text-white', onDark); el.classList.toggle('text-neutral-900', !onDark);
+        });
+        header.querySelectorAll('#navLinks a').forEach(function (el) {
+          el.classList.toggle('text-white/70', onDark); el.classList.toggle('text-neutral-500', !onDark);
+        });
+        var cta = header.querySelector('.nav-cta');
+        if (cta) { cta.classList.toggle('bg-white', onDark); cta.classList.toggle('bg-ink', !onDark); cta.classList.toggle('text-ink', onDark); cta.classList.toggle('text-white', !onDark); }
+      }
+      ScrollTrigger.create({
+        trigger: previewRoot, start: 'top top', end: 'bottom bottom',
+        onUpdate: function () {
+          var over = false;
+          darkSections.forEach(function (sec) { var r = sec.getBoundingClientRect(); if (r.top <= 72 && r.bottom >= 72) over = true; });
+          setTheme(over);
+        },
+      });
+    })();
+
+    /* ---- magnetic ---- */
+    if (!isTouch) {
+      previewRoot.querySelectorAll('[data-magnetic]').forEach(function (el) {
+        var qx = gsap.quickTo(el, 'x', { duration: 0.5, ease: 'power3' });
+        var qy = gsap.quickTo(el, 'y', { duration: 0.5, ease: 'power3' });
+        el.addEventListener('mousemove', function (e) {
+          var r = el.getBoundingClientRect();
+          qx((e.clientX - (r.left + r.width / 2)) * 0.34);
+          qy((e.clientY - (r.top + r.height / 2)) * 0.44);
+        });
+        el.addEventListener('mouseleave', function () { qx(0); qy(0); });
+      });
+    }
+
+    /* ---- generic reveals ---- */
+    function triggerFor(el) {
+      var node = el;
+      while (node && node !== previewRoot) {
+        if (getComputedStyle(node).position === 'sticky') return el.closest('section') || el;
+        node = node.parentElement;
+      }
+      return el;
+    }
+    previewRoot.querySelectorAll('[data-split="lines"]').forEach(function (el) {
+      var lines = splitLines(el);
+      gsap.fromTo(lines, { yPercent: 112 }, { yPercent: 0, duration: 1.25, ease: EASE, stagger: 0.08, scrollTrigger: { trigger: triggerFor(el), start: 'top 88%' } });
+    });
+    previewRoot.querySelectorAll('[data-reveal]').forEach(function (el) {
+      gsap.fromTo(el, { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 1.0, ease: EASE, scrollTrigger: { trigger: triggerFor(el), start: 'top 90%' } });
+    });
+    previewRoot.querySelectorAll('[data-stagger]').forEach(function (el) {
+      gsap.fromTo(el.children, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.95, ease: EASE, stagger: 0.07, scrollTrigger: { trigger: el, start: 'top 88%' } });
+    });
+    previewRoot.querySelectorAll('[data-clip]').forEach(function (el) {
+      gsap.fromTo(el, { clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0% 0)', duration: 1.5, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 86%' } });
+    });
+    previewRoot.querySelectorAll('[data-line]').forEach(function (el) {
+      gsap.fromTo(el, { scaleX: 0 }, { scaleX: 1, duration: 1.6, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 92%' } });
+    });
+    previewRoot.querySelectorAll('[data-parallax-img]').forEach(function (img) {
+      // 가로 갤러리(#hTrack) 이미지는 세로 패럴럭스 제외 — 원본은 가로 패럴럭스만 적용.
+      // 세로 패럴럭스를 걸면 가로 갤러리가 세로 스크롤로 지날 때 이미지가 위아래로 흔들림.
+      if (img.closest('#hTrack')) return;
+      gsap.fromTo(img, { yPercent: -6 }, { yPercent: 6, ease: 'none', scrollTrigger: { trigger: img.parentElement, start: 'top bottom', end: 'bottom top', scrub: true } });
+    });
+
+    /* ---- story cards ---- */
+    previewRoot.querySelectorAll('[data-story]').forEach(function (card, i) {
+      var fromLeft = i % 2 === 0;
+      gsap.fromTo(card, { x: fromLeft ? -100 : 100, opacity: 0 }, { x: 0, opacity: 1, duration: 1.4, ease: 'expo.out', scrollTrigger: { trigger: card, start: 'top 85%' } });
+    });
+
+    /* ---- manifesto word scrub ---- */
+    (function manifesto() {
+      var el = previewRoot.querySelector('#manifestoText'); if (!el) return;
+      var words = splitWords(el);
+      gsap.set(words, { opacity: 0.12 });
+      gsap.to(words, { opacity: 1, ease: 'none', stagger: 1, scrollTrigger: { trigger: el, start: 'top 78%', end: 'bottom 55%', scrub: 0.6 } });
+    })();
+
+    /* ---- counters ---- */
+    previewRoot.querySelectorAll('[data-count]').forEach(function (el) {
+      var end = parseFloat(el.getAttribute('data-count'));
+      var suffix = el.getAttribute('data-suffix') || '';
+      var obj = { v: 0 };
+      ScrollTrigger.create({ trigger: el, start: 'top 90%', once: true, onEnter: function () {
+        gsap.to(obj, { v: end, duration: 1.8, ease: 'power3.out', onUpdate: function () { el.textContent = Math.round(obj.v) + suffix; } });
+      } });
+    });
+
+    /* ---- stacking cards ---- */
+    (function stack() {
+      var cards = previewRoot.querySelectorAll('[data-stack-card]');
+      cards.forEach(function (card, i) {
+        if (i === cards.length - 1) return;
+        gsap.to(card.firstElementChild, { scale: 0.9, yPercent: -4, filter: 'brightness(0.82)', ease: 'none',
+          scrollTrigger: { trigger: cards[i + 1], start: 'top bottom', end: 'top 18%', scrub: true } });
+      });
+    })();
+
+    /* ---- marquees ---- */
+    previewRoot.querySelectorAll('[data-marquee]').forEach(function (track) {
+      var base = parseFloat(track.getAttribute('data-speed')) || 0.4;
+      var half = 0, x = 0;
+      function measure() { half = track.scrollWidth / 2; }
+      measure(); window.addEventListener('resize', measure);
+      if (base > 0) x = -half;
+      gsap.ticker.add(function (time, deltaTime) {
+        if (!half) return;
+        var f = Math.min(deltaTime, 50) / 16.667;
+        x += base * f;
+        if (x <= -half) x += half;
+        if (x >= 0 && base > 0) x -= half;
+        track.style.transform = 'translate3d(' + x + 'px,0,0)';
+      });
+    });
+
+    /* ---- horizontal pinned gallery ---- */
+    (function horizontal() {
+      var section = previewRoot.querySelector('#hScroll');
+      var trackEl = previewRoot.querySelector('#hTrack');
+      var bar = previewRoot.querySelector('#hBar');
+      if (!section || !trackEl) return;
+      function getDistance() { return Math.max(0, trackEl.scrollWidth - previewRoot.clientWidth); }
+      gsap.to(trackEl, {
+        x: function () { return -getDistance(); }, ease: 'none',
+        scrollTrigger: {
+          trigger: section, start: 'top top', end: function () { return '+=' + getDistance(); },
+          pin: true, scrub: 0.8, anticipatePin: 1, invalidateOnRefresh: true, refreshPriority: 2,
+          onUpdate: function (self) { if (bar) bar.style.width = (self.progress * 100).toFixed(1) + '%'; },
+        },
+      });
+
+      // 원본대로: 각 figure 이미지에 가로(xPercent) 카운터-패럴럭스만 적용
+      trackEl.querySelectorAll('figure img').forEach(function (img) {
+        gsap.fromTo(img, { xPercent: -4 }, {
+          xPercent: 4, ease: 'none',
+          scrollTrigger: {
+            trigger: section, start: 'top top',
+            end: function () { return '+=' + getDistance(); },
+            scrub: true, invalidateOnRefresh: true,
+          },
+        });
+      });
+    })();
+
+    /* ---- aperture ---- */
+    (function aperture() {
+      var svg = previewRoot.querySelector('#apSvg');
+      var pin = previewRoot.querySelector('#apPin');
+      if (!svg || !pin) return;
+      var N = 9, R_BARREL = 90, TAU = Math.PI * 2;
+      var clipPath = svg.querySelector('#apClipPath');
+      var ring = svg.querySelector('#apBladeRing');
+      var edge = svg.querySelector('#apEdge');
+      var seams = svg.querySelector('#apSeams');
+      var glints = svg.querySelector('#apGlints');
+      var knurl = svg.querySelector('#apKnurl');
+      var scaleG = svg.querySelector('#apScale');
+      var photo = svg.querySelector('#apPhoto');
+      var dof = svg.querySelector('#apDof');
+      var back = previewRoot.querySelector('#apBack');
+
+      if (photo && back) {
+        photo.setAttributeNS('http://www.w3.org/1999/xlink', 'href', back.currentSrc || back.src);
+        photo.setAttribute('href', back.currentSrc || back.src);
+        photo.setAttribute('opacity', '0.42');
+      }
+      var kd = '';
+      for (var k = 0; k < 84; k++) { var ka = (k / 84) * TAU; kd += 'M' + (93.6 * Math.cos(ka)).toFixed(2) + ' ' + (93.6 * Math.sin(ka)).toFixed(2) + 'L' + (97.4 * Math.cos(ka)).toFixed(2) + ' ' + (97.4 * Math.sin(ka)).toFixed(2); }
+      knurl.innerHTML = '<path d="' + kd + '"></path>';
+      var STOPS = ['f/11', 'f/8', 'f/5.6', 'f/4', 'f/2.8', 'f/2', 'f/1.6'];
+      var sh = ''; STOPS.forEach(function (s, i) { sh += '<text transform="rotate(' + (-42 + i * 14) + ') translate(0 -104)">' + s + '</text>'; }); scaleG.innerHTML = sh;
+      var gh = ''; for (var g = 0; g < N; g++) { gh += '<path class="ap-glint" opacity="0" fill="#fff" d="M0 -3.6L0.9 -0.9L3.6 0L0.9 0.9L0 3.6L-0.9 0.9L-3.6 0L-0.9 -0.9Z"></path>'; } glints.innerHTML = gh;
+      var glintEls = glints.children;
+      seams.innerHTML = '<path></path>'; var seamPath = seams.firstElementChild;
+      var OUTER = 'M-90 0A90 90 0 1 0 90 0A90 90 0 1 0-90 0Z';
+      function pt(r, a) { return [r * Math.cos(a), r * Math.sin(a)]; }
+      function f(v) { return v.toFixed(2); }
+      var state = { r: 2.6, phi: -0.62, open: 0 };
+      function draw() {
+        var r = state.r, phi = state.phi, arcR = r * 2.4, d = '';
+        for (var i = 0; i < N; i++) { var p = pt(r, phi + i * TAU / N); d += (i === 0 ? 'M' : 'A' + f(arcR) + ' ' + f(arcR) + ' 0 0 1 ') + f(p[0]) + ' ' + f(p[1]); }
+        var p0 = pt(r, phi); d += 'A' + f(arcR) + ' ' + f(arcR) + ' 0 0 1 ' + f(p0[0]) + ' ' + f(p0[1]) + 'Z';
+        clipPath.setAttribute('d', d); edge.setAttribute('d', d); ring.setAttribute('d', OUTER + d);
+        var sd = '';
+        for (var j = 0; j < N; j++) { var av = phi + j * TAU / N; var v = pt(r, av); var c = pt((r + R_BARREL) * 0.55, av - 0.30); var e = pt(R_BARREL, av - 0.72); sd += 'M' + f(v[0]) + ' ' + f(v[1]) + 'Q' + f(c[0]) + ' ' + f(c[1]) + ' ' + f(e[0]) + ' ' + f(e[1]); }
+        seamPath.setAttribute('d', sd);
+        for (var m = 0; m < N; m++) { var am = phi + m * TAU / N; var gp = pt(r, am); glintEls[m].setAttribute('transform', 'translate(' + f(gp[0]) + ' ' + f(gp[1]) + ')'); }
+        knurl.setAttribute('transform', 'rotate(' + f(state.open * 26) + ')');
+        scaleG.setAttribute('transform', 'rotate(' + f(42 - state.open * 84) + ')');
+      }
+      draw();
+      var stopEl = previewRoot.querySelector('#apStop'), pctEl = previewRoot.querySelector('#apPct');
+      var tl = gsap.timeline({ scrollTrigger: {
+        trigger: pin, start: 'top top', end: '+=220%', pin: true, scrub: 0.7, anticipatePin: 1, refreshPriority: 1,
+        onUpdate: function (self) {
+          var eased = Math.min(1, self.progress / 0.72);
+          var idx = Math.min(STOPS.length - 1, Math.floor(eased * STOPS.length));
+          if (stopEl) stopEl.textContent = STOPS[idx];
+          if (pctEl) pctEl.textContent = Math.round(eased * 100);
+        },
+      } });
+      tl.to(state, { r: 86, phi: 0, open: 1, ease: 'power2.inOut', duration: 1, onUpdate: draw }, 0)
+        .to(photo, { attr: { opacity: 1 }, ease: 'none', duration: 1 }, 0)
+        .to(dof, { attr: { stdDeviation: 1.1 }, ease: 'none', duration: 1 }, 0)
+        .to('#apBack', { scale: 1.0, opacity: 1, ease: 'none', duration: 1 }, 0)
+        .fromTo('.ap-chip', { opacity: 0, scale: 0.86, y: 24 }, { opacity: 1, scale: 1, y: 0, ease: 'power3.out', duration: 0.35, stagger: 0.06 }, 0.08)
+        .to('.ap-glint', { opacity: 0.85, duration: 0.16, stagger: 0.015 }, 0.60)
+        .to('.ap-glint', { opacity: 0.30, duration: 0.22 }, 0.88)
+        .to('#apTitle', { opacity: 0, y: -18, duration: 0.18, ease: 'power2.in' }, 0.42)
+        .to('#apCopy', { opacity: 0, y: -14, duration: 0.18, ease: 'power2.in' }, 0.42)
+        .add(function () {
+          var t = previewRoot.querySelector('#apTitle'), c = previewRoot.querySelector('#apCopy'), l = previewRoot.querySelector('#apLabel');
+          if (!t) return;
+          t.textContent = 'And the whole frame breathes.';
+          c.textContent = 'Dual-native ISO up to 12800, 10-bit color and a stacked sensor that reads out fast enough to kill rolling shutter.';
+          l.textContent = '(05) — Wide open';
+        }, 0.52)
+        .to('#apTitle', { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out' }, 0.54)
+        .to('#apCopy', { opacity: 1, y: 0, duration: 0.2, ease: 'power2.out' }, 0.56)
+        .to('#apStage', { scale: 1.18, ease: 'power1.in', duration: 0.3 }, 0.7)
+        .to('.ap-chip', { opacity: 0, duration: 0.2 }, 0.78);
+    })();
+
+    /* ---- statement ---- */
+    (function statement() {
+      var el = previewRoot.querySelector('[data-statement]'); if (!el) return;
+      var lines = el.querySelectorAll('.line-inner');
+      gsap.fromTo(lines, { yPercent: 108, rotate: 3 }, { yPercent: 0, rotate: 0, duration: 1.4, ease: 'expo.out', stagger: 0.1, scrollTrigger: { trigger: el, start: 'top 86%' } });
+    })();
+
+    /* ---- footer wordmark ---- */
+    (function footer() {
+      var word = previewRoot.querySelector('#footerWord'); if (!word) return;
+      gsap.fromTo(word, { yPercent: 40, opacity: 0 }, { yPercent: 0, opacity: 1, ease: 'none', scrollTrigger: { trigger: word, start: 'top bottom', end: 'bottom bottom', scrub: true } });
+    })();
+
+    /* ---- progress bar ---- */
+    gsap.to('#cp-progress', { scaleX: 1, ease: 'none', scrollTrigger: { trigger: previewRoot, start: 'top top', end: 'bottom bottom', scrub: 0.3 } });
+
+    /* ---- anchor scrolling within preview ---- */
+    previewRoot.querySelectorAll('a[href^="#"]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        var id = a.getAttribute('href'); if (!id || id === '#') return;
+        var target = previewRoot.querySelector(id); if (!target) return;
+        e.preventDefault();
+        gsap.to(scroller, { scrollTo: { y: target, offsetY: 60 }, duration: 1.0, ease: 'power3.inOut' });
+      });
+    });
+
+    ScrollTrigger.refresh();
+    window.addEventListener('load', function () { ScrollTrigger.refresh(); });
+  }
+
+  /* ---- menu / faq / form ---- */
+  function initMenu() {
+    var menuButton = previewRoot.querySelector('#menuButton');
+    var mobileMenu = previewRoot.querySelector('#mobileMenu');
+    if (!menuButton || !mobileMenu) return;
+    function icon(name) { menuButton.innerHTML = '<i data-lucide="' + name + '" class="h-5 w-5" stroke-width="1.5"></i>'; if (window.lucide) lucide.createIcons(); }
+    menuButton.addEventListener('click', function () {
+      var isOpen = !mobileMenu.classList.contains('hidden');
+      mobileMenu.classList.toggle('hidden');
+      mobileMenu.classList.toggle('pointer-events-none', isOpen);
+      menuButton.setAttribute('aria-expanded', String(!isOpen));
+      icon(isOpen ? 'menu' : 'x');
+    });
+    mobileMenu.querySelectorAll('a').forEach(function (link) {
+      link.addEventListener('click', function () { mobileMenu.classList.add('hidden', 'pointer-events-none'); menuButton.setAttribute('aria-expanded', 'false'); icon('menu'); });
+    });
+  }
+  function initFAQ() {
+    previewRoot.querySelectorAll('.faq-item').forEach(function (item) {
+      var head = item.querySelector('.faq-head');
+      var body = item.querySelector('.faq-body');
+      if (item.classList.contains('is-open')) body.style.height = 'auto';
+      head.addEventListener('click', function () {
+        var open = item.classList.contains('is-open');
+        item.parentElement.querySelectorAll('.faq-item.is-open').forEach(function (other) {
+          if (other === item) return;
+          other.classList.remove('is-open');
+          other.querySelector('.faq-head').setAttribute('aria-expanded', 'false');
+          var ob = other.querySelector('.faq-body');
+          if (window.gsap) gsap.to(ob, { height: 0, duration: 0.5, ease: 'power3.inOut' }); else ob.style.height = '0px';
+        });
+        item.classList.toggle('is-open', !open);
+        head.setAttribute('aria-expanded', String(!open));
+        if (window.gsap) {
+          gsap.to(body, { height: open ? 0 : body.firstElementChild.offsetHeight, duration: 0.55, ease: 'power3.inOut',
+            onComplete: function () { if (!open) body.style.height = 'auto'; if (window.ScrollTrigger) ScrollTrigger.refresh(); } });
+        } else { body.style.height = open ? '0px' : 'auto'; }
+      });
+    });
+  }
+  function initForm() {
+    var form = previewRoot.querySelector('#subForm');
+    var msg = previewRoot.querySelector('#subMsg');
+    if (!form) return;
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var input = form.querySelector('input');
+      if (!input.value || !input.checkValidity()) { if (window.gsap) gsap.fromTo(form, { x: -8 }, { x: 0, duration: 0.5, ease: 'elastic.out(1,0.35)' }); return; }
+      input.value = ''; input.placeholder = 'Thanks — check your inbox';
+      if (window.gsap) gsap.to(msg, { opacity: 1, duration: 0.4 }); else msg.style.opacity = '1';
+    });
+  }
+
+  /* ---- boot gate: Tailwind CDN + fonts 대기 ---- */
+  function whenReady(cb) {
+    var tries = 0;
+    (function poll() {
+      var ready = typeof window.gsap !== 'undefined' || tries > 100;
+      if (ready) {
+        var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+        fonts.then(function () { setTimeout(cb, 40); });
+      } else { setTimeout(poll, 30); }
+    })();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { whenReady(boot); });
+  } else {
+    whenReady(boot);
+  }
+})();
+</script>
+
+</body>
+</html>
