@@ -1,4 +1,203 @@
 <!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIVO — 추추몬 편집</title>
+<style>
+/* ══════════════════════════════════════════════════════
+   [규칙 5] 플랫폼 외부(로컬) 레이아웃
+   데스크탑: editor 40% 좌 | preview 60% 우
+   모바일: editor 숨김, preview 100%
+   ══════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px; background: #f0f0f0; }
+body { display: flex; flex-direction: row; }
+
+/* ── 편집 패널 ── */
+.chuchumon-editor {
+  width: 40%; height: 100vh; overflow-y: auto; flex-shrink: 0;
+  background: #fafafa; border-right: 1px solid #e0e0e0;
+  display: flex; flex-direction: column;
+}
+.editor-header {
+  padding: 16px 20px 12px; border-bottom: 1px solid #e8e8e8;
+  background: #fff; position: sticky; top: 0; z-index: 10;
+}
+.editor-header h1 { font-size: 14px; font-weight: 700; color: #111; letter-spacing: -0.01em; }
+.editor-header p { font-size: 11px; color: #888; margin-top: 3px; }
+.editor-body { flex: 1; overflow-y: auto; padding: 16px 20px 40px; }
+
+/* 섹션 그룹 */
+.section-group { margin-bottom: 4px; }
+.section-title {
+  font-size: 10px; font-weight: 700; color: #08090A;
+  text-transform: uppercase; letter-spacing: .08em;
+  padding: 14px 0 8px; border-top: 1px solid #e8e8e8;
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer; user-select: none;
+}
+.section-title:first-child { border-top: none; padding-top: 0; }
+.section-title .toggle-icon { margin-left: auto; font-size: 12px; color: #aaa; transition: transform .2s; }
+.section-title.collapsed .toggle-icon { transform: rotate(-90deg); }
+.section-content { display: block; }
+.section-content.hidden { display: none; }
+
+/* 필드 */
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 11px; font-weight: 600; color: #555; margin-bottom: 4px; }
+.field input[type="text"],
+.field textarea {
+  width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px;
+  font-size: 12px; font-family: inherit; outline: none; background: #fff;
+  transition: border-color .15s; color: #222;
+}
+.field input[type="text"]:focus,
+.field textarea:focus { border-color: #C8FF3D; box-shadow: 0 0 0 2px rgba(200,255,61,.18); }
+.field textarea { resize: vertical; min-height: 52px; line-height: 1.5; }
+.field-hint { font-size: 10px; color: #aaa; margin-top: 3px; line-height: 1.4; }
+.checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #444; padding: 4px 0; }
+.checkbox-row input[type="checkbox"] { width: 14px; height: 14px; accent-color: #C8FF3D; }
+
+/* ── 미리보기 영역 ── */
+.chuchumon-preview { flex: 1; height: 100vh; position: relative; overflow: hidden; background: #e8e8e8; }
+.chuchumon-preview iframe { width: 100%; height: 100%; border: none; display: block; background: #fff; }
+
+/* 로딩 오버레이 */
+.preview-loading {
+  position: absolute; inset: 0; background: #111;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; z-index: 10; transition: opacity .4s;
+}
+.preview-loading.hidden { opacity: 0; pointer-events: none; }
+.loading-spinner {
+  width: 32px; height: 32px; border: 2px solid rgba(255,255,255,.15);
+  border-top-color: #C8FF3D; border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.preview-loading p { font-size: 11px; color: rgba(255,255,255,.5); letter-spacing: .1em; text-transform: uppercase; }
+
+/* 모바일: editor 숨김 */
+@media (max-width: 768px) {
+  .chuchumon-editor { display: none; }
+  .chuchumon-preview { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     ① 편집 패널 (.chuchumon-editor)
+     [규칙 1] 편집 UI는 이 영역 안에만 작성
+     ══════════════════════════════════════════════════════ -->
+<div class="chuchumon-editor">
+  <div class="editor-header">
+    <h1>NIVO 사이트 편집</h1>
+    <p>값을 수정하면 오른쪽 미리보기에 즉시 반영됩니다</p>
+  </div>
+  <div class="editor-body">
+
+    <div class="section-group">
+      <div class="section-title" onclick="toggleSection(this)">상단 공지 바<span class="toggle-icon">▾</span></div>
+      <div class="section-content">
+        <div class="field"><label>공지 문구 1</label><input type="text" name="announce1" value="Free shipping on the NIVO One Creator Kit" oninput="sendUpdate()"></div>
+        <div class="field"><label>공지 문구 2</label><input type="text" name="announce2" value="Limited launch offer" oninput="sendUpdate()"></div>
+        <div class="field"><label>공지 문구 3</label><input type="text" name="announce3" value="Ships in 48 hours" oninput="sendUpdate()"></div>
+        <div class="field"><label>공지 문구 4</label><input type="text" name="announce4" value="2-year creator warranty" oninput="sendUpdate()"></div>
+      </div>
+    </div>
+
+    <div class="section-group">
+      <div class="section-title" onclick="toggleSection(this)">히어로 섹션<span class="toggle-icon">▾</span></div>
+      <div class="section-content">
+        <div class="field"><label>배경 영상 URL</label><input type="text" name="heroVideoUrl" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/generated-videos/5bd6211c-bd4c-467c-b442-4312cac4712c/1785163661816-ea1193e9-c971-46d9-8e1f-50c0e0ec6b27.mp4" oninput="sendUpdate()"><p class="field-hint">외부 URL만 입력하세요.</p></div>
+        <div class="field"><label>상단 작은 문구</label><input type="text" name="heroEyebrow" value="Create anywhere. Sound incredible." oninput="sendUpdate()"></div>
+        <div class="field"><label>메인 제목</label><textarea name="heroTitle" oninput="sendUpdate()">Your complete creator studio. In your pocket.</textarea></div>
+        <div class="field"><label>메인 설명</label><textarea name="heroDesc" oninput="sendUpdate()">Capture stabilized 4K video and studio-quality sound with one compact camera and wireless microphone system.</textarea></div>
+        <div class="field"><label>버튼 1 텍스트</label><input type="text" name="heroBtn1" value="Shop the Creator Kit" oninput="sendUpdate()"></div>
+        <div class="field"><label>버튼 2 텍스트</label><input type="text" name="heroBtn2" value="Watch the film" oninput="sendUpdate()"></div>
+      </div>
+    </div>
+
+    <div class="section-group">
+      <div class="section-title" onclick="toggleSection(this)">브랜드 선언문<span class="toggle-icon">▾</span></div>
+      <div class="section-content">
+        <div class="field"><label>본문 텍스트</label><textarea name="manifesto" rows="5" oninput="sendUpdate()">A camera bag used to be the price of entry. We put the whole studio — optics, stabilization, and broadcast sound — into something that disappears into your pocket. So the only thing left to carry is the idea.</textarea></div>
+      </div>
+    </div>
+
+    <div class="section-group">
+      <div class="section-title" onclick="toggleSection(this)">제품 라인업<span class="toggle-icon">▾</span></div>
+      <div class="section-content">
+        <div class="field"><label>제품 1 이미지 URL (NIVO One)</label><input type="text" name="prod1Img" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/0711a0c1-d01e-461b-a3a4-f1c870278629_3840w.png" oninput="sendUpdate()"></div>
+        <div class="field"><label>제품 1 가격</label><input type="text" name="prod1Price" value="From $499" oninput="sendUpdate()"></div>
+        <div class="field"><label>제품 2 이미지 URL (Mic Mini)</label><input type="text" name="prod2Img" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/ee86ccc6-e7a9-4a81-a328-5c5894aa8e48_3840w.png" oninput="sendUpdate()"></div>
+        <div class="field"><label>제품 2 가격</label><input type="text" name="prod2Price" value="From $149" oninput="sendUpdate()"></div>
+        <div class="field"><label>제품 3 이미지 URL (Creator Kit)</label><input type="text" name="prod3Img" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/7b477bfa-78bb-42fe-b3a1-d23ddac27768_3840w.png" oninput="sendUpdate()"></div>
+        <div class="field"><label>제품 3 가격</label><input type="text" name="prod3Price" value="$649" oninput="sendUpdate()"></div>
+      </div>
+    </div>
+
+    <div class="section-group">
+      <div class="section-title" onclick="toggleSection(this)">갤러리 이미지<span class="toggle-icon">▾</span></div>
+      <div class="section-content">
+        <div class="field"><label>갤러리 이미지 1 URL</label><input type="text" name="gal1Img" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/cdef4873-8fea-4115-8a82-006a32e63f52_3840w.png" oninput="sendUpdate()"></div>
+        <div class="field"><label>갤러리 이미지 2 URL</label><input type="text" name="gal2Img" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/8f231664-7b31-4a1f-8e19-f18dd34d436f_3840w.png" oninput="sendUpdate()"></div>
+        <div class="field"><label>갤러리 이미지 3 URL</label><input type="text" name="gal3Img" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/b739edad-d484-48c1-8cef-883153b95f4e_3840w.png" oninput="sendUpdate()"></div>
+        <div class="field"><label>갤러리 이미지 4 URL</label><input type="text" name="gal4Img" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/0eca95bb-6ae2-4781-8e51-dc99c29cea24_3840w.png" oninput="sendUpdate()"></div>
+      </div>
+    </div>
+
+    <div class="section-group">
+      <div class="section-title" onclick="toggleSection(this)">기술 섹션 (조리개)<span class="toggle-icon">▾</span></div>
+      <div class="section-content">
+        <div class="field"><label>배경 이미지 URL</label><input type="text" name="apBackImg" value="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/0b747a96-4f78-4e4e-8152-d26201955a6b_3840w.png" oninput="sendUpdate()"></div>
+        <div class="field"><label>제목</label><input type="text" name="apTitle" value="f/1.6 opens the night." oninput="sendUpdate()"></div>
+        <div class="field"><label>설명 텍스트</label><textarea name="apCopy" oninput="sendUpdate()">A wide aperture, a stacked sensor and dual-native ISO. Scroll to open the iris and watch the frame gather light.</textarea></div>
+      </div>
+    </div>
+
+    <div class="section-group">
+      <div class="section-title" onclick="toggleSection(this)">표시 옵션<span class="toggle-icon">▾</span></div>
+      <div class="section-content">
+        <div class="field">
+          <div class="checkbox-row">
+            <input type="checkbox" name="showReviews" checked onchange="sendUpdate()">
+            <label style="margin:0">리뷰 섹션 표시</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     ② 미리보기 (.chuchumon-preview)
+     [규칙 1] 원본 사이트는 Blob URL iframe으로 완전 격리
+     — 단일 HTML 파일 안에 원본 소스 전체 내장
+     ══════════════════════════════════════════════════════ -->
+<div class="chuchumon-preview">
+  <div class="preview-loading" id="previewLoading">
+    <div class="loading-spinner"></div>
+    <p>Loading preview...</p>
+  </div>
+  <iframe id="previewFrame" title="NIVO 사이트 미리보기" allow="autoplay"></iframe>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════
+   추추몬 편집 패널 — Blob URL iframe 내장 방식
+   [규칙 2] sendUpdate() → iframe postMessage 전송
+   [규칙 3] DOM 업데이트는 iframe 내부에서 처리
+   [규칙 4] setAttribute로 HTML 속성 동기화
+   ══════════════════════════════════════════════════════ */
+
+/* 원본 사이트 HTML 전체 — Blob URL 생성용 */
+var PREVIEW_HTML = `<!DOCTYPE html>
 <html lang="en"><head><script id="aura-preview-performance-controller">
 (function() {
 if (window.__auraPreviewPerformanceController) return;
@@ -23,7 +222,7 @@ style.textContent = [
 '  transition-duration: 0s !important;',
 '  scroll-behavior: auto !important;',
 '}'
-].join('\n');
+].join('\\n');
 document.head.appendChild(style);
 window.requestAnimationFrame = function(callback) {
 const frameId = nextFrameId++;
@@ -88,7 +287,7 @@ if (!event.data || event.data.type !== 'aura-preview-performance-mode') return;
 setPaused(event.data.paused);
 });
 })();
-</script>
+<\/script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Meet the NIVO One Creator Kit: a pocket-sized 4K camera and wireless microphone system for creators. Film smooth video, capture clear sound, and create anywhere.">
@@ -96,7 +295,7 @@ setPaused(event.data.paused);
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.tailwindcss.com"><\/script>
 <script>
 tailwind.config = {
 theme: {
@@ -109,8 +308,8 @@ display: ['"Inter Tight"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
 },
 },
 };
-</script>
-<script src="https://unpkg.com/lucide@latest"></script>
+<\/script>
+<script src="https://unpkg.com/lucide@latest"><\/script>
 <style>
 :root { --acid: #C8FF3D; --ink: #08090A; }
 html { -webkit-font-smoothing: antialiased; }
@@ -176,14 +375,14 @@ background: currentColor; vertical-align: -0.12em; opacity: 0; }
 .js [data-clip] { clip-path: none !important; }
 #preloader, .pl-panel, #grain { display: none !important; }
 }
-</style><!-- aura-ga4-start -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-2M6V79H761"></script>
+<\/style><!-- aura-ga4-start -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-2M6V79H761"><\/script>
 <script>
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'G-2M6V79H761');
-</script>
+<\/script>
 <!-- aura-ga4-end -->
 </head>
 
@@ -192,7 +391,7 @@ gtag('config', 'G-2M6V79H761');
 <script>
   // Mark JS on so pre-animation hidden states apply. Removed again if GSAP never loads.
   document.documentElement.classList.add('js');
-</script>
+<\/script>
 <!-- Sentinel: display:none only once the Tailwind CDN has injected its utilities.
      Also safelists the classes the nav swaps in at runtime, so the CDN's JIT
      has already generated them before the first theme change. -->
@@ -220,7 +419,7 @@ gtag('config', 'G-2M6V79H761');
 <div id="cursorDot"></div>
 
 <!-- ============ ANNOUNCE ============ -->
-<div class="relative z-[60] overflow-hidden bg-acid py-2.5 text-ink">
+<div id="live-announce" class="relative z-[60] overflow-hidden bg-acid py-2.5 text-ink">
   <div class="marquee" data-marquee="" data-speed="0.35">
     <div class="flex items-center gap-8 pr-8 text-[11px] font-medium uppercase tracking-[0.18em]">
       <span>Free shipping on the NIVO One Creator Kit</span><span class="opacity-40">/</span>
@@ -1146,9 +1345,9 @@ gtag('config', 'G-2M6V79H761');
 </footer>
 
 <!-- libs -->
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"><\/script>
 <script>
 /* =========================================================
    NIVO — scroll experience
@@ -1220,9 +1419,9 @@ gtag('config', 'G-2M6V79H761');
     nodes.forEach(function (node) {
       if (!node.nodeValue.trim()) return;
       var frag = document.createDocumentFragment();
-      node.nodeValue.split(/(\s+)/).forEach(function (chunk) {
+      node.nodeValue.split(/(\\s+)/).forEach(function (chunk) {
         if (!chunk) return;
-        if (/^\s+$/.test(chunk)) { frag.appendChild(document.createTextNode(chunk)); return; }
+        if (/^\\s+$/.test(chunk)) { frag.appendChild(document.createTextNode(chunk)); return; }
         var s = document.createElement('span');
         s.className = 'word';
         s.textContent = chunk;
@@ -1237,7 +1436,7 @@ gtag('config', 'G-2M6V79H761');
   // Re-runnable: the original text is stashed so a resize can re-wrap.
   function splitLines(el, force) {
     if (el.dataset.splitDone && !force) return Array.prototype.slice.call(el.querySelectorAll('.line-inner'));
-    if (!el.dataset.origText) el.dataset.origText = el.textContent.replace(/\s+/g, ' ').trim();
+    if (!el.dataset.origText) el.dataset.origText = el.textContent.replace(/\\s+/g, ' ').trim();
     if (force) { el.innerHTML = el.dataset.origText; el.removeAttribute('data-split-done'); delete el.dataset.splitDone; }
     var words = splitWords(el);
     if (!words.length) return [];
@@ -1524,7 +1723,7 @@ gtag('config', 'G-2M6V79H761');
 
     document.querySelectorAll('[data-type]').forEach(function (el) {
       // source markup is indented, so collapse the whitespace first
-      var full = el.textContent.replace(/\s+/g, ' ').trim();
+      var full = el.textContent.replace(/\\s+/g, ' ').trim();
       if (!full) return;
 
       // A hidden ghost of the finished text holds the exact box (measuring a
@@ -1796,7 +1995,7 @@ gtag('config', 'G-2M6V79H761');
     preload();
   });
 })();
-</script>
+<\/script>
 
 <script>
 /* =========================================================
@@ -2118,7 +2317,7 @@ gtag('config', 'G-2M6V79H761');
     window.addEventListener('load', function () { ScrollTrigger.refresh(); });
   };
 })();
-</script>
+<\/script>
 
 <script data-aura-video-controller="true">
 (function () {
@@ -2187,4 +2386,231 @@ gtag('config', 'G-2M6V79H761');
   } else {
     setupVideos();
   }
-})();</script></body></html>
+})();<\/script></body></html>
+<script>
+/* ============================================================
+   추추몬 AI — postMessage 수신 스크립트
+   편집 패널에서 보낸 데이터를 받아 DOM 값만 교체
+   (원본 HTML/JS/CSS/기능 일체 변경 없음)
+   ============================================================ */
+(function () {
+  function applyData(data) {
+    /* 공지 바 */
+    var annDivs = document.querySelectorAll('#live-announce .marquee > div:first-child span:not(.opacity-40)');
+    if (annDivs.length >= 4) {
+      if (data.announce1 != null) annDivs[0].textContent = data.announce1;
+      if (data.announce2 != null) annDivs[1].textContent = data.announce2;
+      if (data.announce3 != null) annDivs[2].textContent = data.announce3;
+      if (data.announce4 != null) annDivs[3].textContent = data.announce4;
+    }
+
+    /* 히어로 배경 영상 */
+    if (data.heroVideoUrl != null) {
+      var vid = document.getElementById('heroImg');
+      if (vid && vid.getAttribute('src') !== data.heroVideoUrl) {
+        vid.setAttribute('src', data.heroVideoUrl);
+        vid.load();
+      }
+    }
+
+    /* 히어로 eyebrow 텍스트 (heroRule span 보존) */
+    if (data.heroEyebrow != null) {
+      var p = document.querySelector('#heroCopy p');
+      if (p) {
+        var rule = document.getElementById('heroRule');
+        p.textContent = data.heroEyebrow;
+        if (rule) p.insertBefore(rule, p.firstChild);
+      }
+    }
+
+    /* 히어로 제목 */
+    if (data.heroTitle != null) {
+      var h1 = document.querySelector('#heroCopy h1');
+      if (h1) h1.textContent = data.heroTitle;
+    }
+
+    /* 히어로 설명 */
+    if (data.heroDesc != null) {
+      var desc = document.querySelector('#heroCopy p.mt-8');
+      if (desc) desc.textContent = data.heroDesc;
+    }
+
+    /* 히어로 버튼 1 */
+    if (data.heroBtn1 != null) {
+      var btn1 = document.querySelector('#heroCopy a[href="#lineup"]');
+      if (btn1) {
+        var span = btn1.querySelector('span.block');
+        var icon = btn1.querySelector('i');
+        if (span) { span.textContent = data.heroBtn1; }
+        else {
+          btn1.textContent = data.heroBtn1 + ' ';
+          if (icon) btn1.appendChild(icon);
+        }
+      }
+    }
+
+    /* 히어로 버튼 2 */
+    if (data.heroBtn2 != null) {
+      var btn2 = document.querySelector('#heroCopy a[href="#gallery"]');
+      if (btn2) {
+        var icon = btn2.querySelector('i');
+        btn2.textContent = data.heroBtn2 + ' ';
+        if (icon) btn2.appendChild(icon);
+      }
+    }
+
+    /* 매니페스토 */
+    if (data.manifesto != null) {
+      var el = document.getElementById('manifestoText');
+      if (el) el.textContent = data.manifesto;
+    }
+
+    /* 제품 라인업 이미지 */
+    var lineupImgs = document.querySelectorAll('#lineup img[data-parallax-img]');
+    if (data.prod1Img != null && lineupImgs[0]) lineupImgs[0].setAttribute('src', data.prod1Img);
+    if (data.prod2Img != null && lineupImgs[1]) lineupImgs[1].setAttribute('src', data.prod2Img);
+    if (data.prod3Img != null && lineupImgs[2]) lineupImgs[2].setAttribute('src', data.prod3Img);
+
+    /* 제품 가격 */
+    var lineupCards = document.querySelectorAll('#lineup article');
+    if (data.prod1Price != null && lineupCards[0]) {
+      var p = lineupCards[0].querySelector('.tabular-nums');
+      if (p) p.textContent = data.prod1Price;
+    }
+    if (data.prod2Price != null && lineupCards[1]) {
+      var p = lineupCards[1].querySelector('.tabular-nums');
+      if (p) p.textContent = data.prod2Price;
+    }
+    if (data.prod3Price != null && lineupCards[2]) {
+      var p = lineupCards[2].querySelector('.tabular-nums');
+      if (p) p.textContent = data.prod3Price;
+    }
+
+    /* 갤러리 이미지 */
+    var galImgs = document.querySelectorAll('#hTrack img[data-parallax-img]');
+    if (data.gal1Img != null && galImgs[0]) galImgs[0].setAttribute('src', data.gal1Img);
+    if (data.gal2Img != null && galImgs[1]) galImgs[1].setAttribute('src', data.gal2Img);
+    if (data.gal3Img != null && galImgs[2]) galImgs[2].setAttribute('src', data.gal3Img);
+    if (data.gal4Img != null && galImgs[3]) galImgs[3].setAttribute('src', data.gal4Img);
+
+    /* 조리개 섹션 */
+    if (data.apBackImg != null) {
+      var el = document.getElementById('apBack');
+      if (el) el.setAttribute('src', data.apBackImg);
+    }
+    if (data.apTitle != null) {
+      var el = document.getElementById('apTitle');
+      if (el) el.textContent = data.apTitle;
+    }
+    if (data.apCopy != null) {
+      var el = document.getElementById('apCopy');
+      if (el) el.textContent = data.apCopy;
+    }
+
+    /* 리뷰 섹션 표시/숨김 */
+    if (data.showReviews != null) {
+      var el = document.getElementById('reviews');
+      if (el) el.style.display = data.showReviews ? '' : 'none';
+    }
+  }
+
+  /* postMessage 수신 */
+  window.addEventListener('message', function (e) {
+    if (!e.data || e.data.type !== 'CHUCHUMON_UPDATE') return;
+    applyData(e.data.data);
+  });
+
+  /* 부모 창에 로드 완료 알림 */
+  window.addEventListener('load', function () {
+    window.parent.postMessage({ type: 'CHUCHUMON_READY' }, '*');
+  });
+})();
+<\/script>
+</body>
+</html>
+`;
+
+/* Blob URL 생성 및 iframe 주입 */
+var blob = new Blob([PREVIEW_HTML], { type: 'text/html; charset=utf-8' });
+var blobUrl = URL.createObjectURL(blob);
+var iframe = document.getElementById('previewFrame');
+var loadingEl = document.getElementById('previewLoading');
+var iframeReady = false;
+var pendingData = null;
+
+iframe.src = blobUrl;
+
+/* iframe 로드 완료 감지 */
+window.addEventListener('message', function (e) {
+  if (!e.data) return;
+  if (e.data.type === 'CHUCHUMON_READY') {
+    iframeReady = true;
+    loadingEl.classList.add('hidden');
+    if (pendingData) { postToIframe(pendingData); pendingData = null; }
+  }
+  if (e.data.type === 'CHUCHUMON_UPDATE') {
+    window.parent.postMessage(e.data, '*');
+  }
+});
+
+/* 타임아웃 폴백 (5초) */
+setTimeout(function () {
+  loadingEl.classList.add('hidden');
+  iframeReady = true;
+  if (pendingData) { postToIframe(pendingData); pendingData = null; }
+}, 5000);
+
+/* [규칙 2] iframe으로 postMessage 전송 */
+function postToIframe(data) {
+  if (iframe.contentWindow) {
+    iframe.contentWindow.postMessage({ type: 'CHUCHUMON_UPDATE', data: data }, '*');
+  }
+}
+
+/* 편집 패널 → 데이터 수집 → iframe 전송 */
+function sendUpdate() {
+  var data = collectData();
+  /* [규칙 4] 속성 동기화 */
+  document.querySelectorAll('.chuchumon-editor input[type="text"], .chuchumon-editor textarea').forEach(function (el) {
+    el.setAttribute('value', el.value);
+  });
+  document.querySelectorAll('.chuchumon-editor input[type="checkbox"]').forEach(function (el) {
+    if (el.checked) el.setAttribute('checked', 'checked');
+    else el.removeAttribute('checked');
+  });
+  /* [규칙 2] 플랫폼 브로커로도 전송 */
+  window.parent.postMessage({ type: 'CHUCHUMON_UPDATE', data: data }, '*');
+  if (iframeReady) { postToIframe(data); } else { pendingData = data; }
+}
+
+/* 편집 패널 모든 필드 값 수집 */
+function collectData() {
+  var data = {};
+  document.querySelectorAll('.chuchumon-editor input[type="text"]').forEach(function (el) { if (el.name) data[el.name] = el.value; });
+  document.querySelectorAll('.chuchumon-editor textarea').forEach(function (el) { if (el.name) data[el.name] = el.value; });
+  document.querySelectorAll('.chuchumon-editor input[type="checkbox"]').forEach(function (el) { if (el.name) data[el.name] = el.checked; });
+  return data;
+}
+
+/* 섹션 접기/펼치기 */
+function toggleSection(titleEl) {
+  titleEl.classList.toggle('collapsed');
+  var content = titleEl.nextElementSibling;
+  if (content) content.classList.toggle('hidden');
+}
+
+/* 플랫폼에서 데이터 수신 시 편집 패널 값 업데이트 */
+window.addEventListener('message', function (e) {
+  if (!e.data || e.data.type !== 'CHUCHUMON_LOAD') return;
+  var data = e.data.data;
+  Object.keys(data).forEach(function (key) {
+    var el = document.querySelector('.chuchumon-editor [name="' + key + '"]');
+    if (!el) return;
+    if (el.type === 'checkbox') el.checked = !!data[key];
+    else el.value = data[key];
+  });
+  sendUpdate();
+});
+</script>
+</body>
+</html>
