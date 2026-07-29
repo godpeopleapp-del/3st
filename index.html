@@ -2540,6 +2540,13 @@ var pendingData = null;
 
 iframe.src = blobUrl;
 
+/* iframe HTML 파싱 완료 즉시 Loading 오버레이 제거 */
+iframe.onload = function () {
+  loadingEl.classList.add('hidden');
+  iframeReady = true;
+  if (pendingData) { postToIframe(pendingData); pendingData = null; }
+};
+
 /* iframe 로드 완료 감지 */
 window.addEventListener('message', function (e) {
   if (!e.data) return;
@@ -2558,7 +2565,7 @@ setTimeout(function () {
   loadingEl.classList.add('hidden');
   iframeReady = true;
   if (pendingData) { postToIframe(pendingData); pendingData = null; }
-}, 5000);
+}, 1000);
 
 /* [규칙 2] iframe으로 postMessage 전송 */
 function postToIframe(data) {
