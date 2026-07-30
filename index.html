@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NIVO — 추추몬 v5</title>
+  <!-- [규칙 7] CDN 외부 스크립트 — 반드시 head 안에 위치 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NIVO — 추추몬 편집</title>
@@ -71,13 +81,32 @@ body { display: flex; flex-direction: row; }
   .chuchumon-preview { width: 100%; }
 }
 </style>
+
+
+  <style>
+    /* [규칙 5] 추추몬 플랫폼 레이아웃 */
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: row; }
+    .chuchumon-editor {
+      width: 40%; height: 100vh; overflow-y: auto; flex-shrink: 0;
+      background: #fafafa; border-right: 1px solid #e0e0e0;
+    }
+    .chuchumon-preview {
+      width: 60%; height: 100vh; overflow-y: auto; flex-grow: 1;
+      position: relative; background: #fff;
+      /* [CSS 트릭] transform으로 새로운 containing block 생성
+         → position:fixed 요소들이 이 div 안에 갇힘 */
+      transform: translate(0);
+    }
+    @media (max-width: 768px) {
+      .chuchumon-editor { display: none; }
+      .chuchumon-preview { width: 100%; }
+    }
+    .hidden { display: none !important; }
+  </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════════
-     ① 편집 패널 (.chuchumon-editor)
-     [규칙 1] 편집 UI는 이 영역 안에만 작성
-     ══════════════════════════════════════════════════════ -->
 <div class="chuchumon-editor">
   <div class="editor-header">
     <h1>NIVO 사이트 편집</h1>
@@ -165,214 +194,13 @@ body { display: flex; flex-direction: row; }
      [규칙 1] 원본 사이트는 Blob URL iframe으로 완전 격리
      — 단일 HTML 파일 안에 원본 소스 전체 내장
      ══════════════════════════════════════════════════════ -->
+
+<!-- ② 미리보기 (.chuchumon-preview) — 원본 사이트 전체 직접 배치 [규칙 1] -->
 <div class="chuchumon-preview">
-  <iframe id="previewFrame" title="NIVO 사이트 미리보기" allow="autoplay"></iframe>
-</div>
-
-<script>
-/* ══════════════════════════════════════════════════════
-   추추몬 편집 패널 — Blob URL iframe 내장 방식
-   [규칙 2] sendUpdate() → iframe postMessage 전송
-   [규칙 3] DOM 업데이트는 iframe 내부에서 처리
-   [규칙 4] setAttribute로 HTML 속성 동기화
-   ══════════════════════════════════════════════════════ */
-
-/* 원본 사이트 HTML 전체 — Blob URL 생성용 */
-var PREVIEW_HTML = `<!DOCTYPE html>
-<html lang="en"><head><script id="aura-preview-performance-controller">
-(function() {
-if (window.__auraPreviewPerformanceController) return;
-const nativeRequestAnimationFrame = window.requestAnimationFrame
-? window.requestAnimationFrame.bind(window)
-: function(callback) { return window.setTimeout(function() { callback(Date.now()); }, 16); };
-const nativeCancelAnimationFrame = window.cancelAnimationFrame
-? window.cancelAnimationFrame.bind(window)
-: window.clearTimeout.bind(window);
-const nativeSetInterval = window.setInterval.bind(window);
-let paused = false;
-let nextFrameId = 1;
-const frameRecords = new Map();
-const pausedFrameCallbacks = new Map();
-const style = document.createElement('style');
-style.id = 'aura-preview-performance-style';
-style.textContent = [
-'html[data-aura-preview-paused="true"] *,',
-'html[data-aura-preview-paused="true"] *::before,',
-'html[data-aura-preview-paused="true"] *::after {',
-'  animation-play-state: paused !important;',
-'  transition-duration: 0s !important;',
-'  scroll-behavior: auto !important;',
-'}'
-].join('\\n');
-document.head.appendChild(style);
-window.requestAnimationFrame = function(callback) {
-const frameId = nextFrameId++;
-if (paused) {
-pausedFrameCallbacks.set(frameId, callback);
-frameRecords.set(frameId, { paused: true });
-return frameId;
-}
-const nativeFrameId = nativeRequestAnimationFrame(function(timestamp) {
-frameRecords.delete(frameId);
-callback(timestamp);
-});
-frameRecords.set(frameId, { nativeFrameId: nativeFrameId });
-return frameId;
-};
-window.cancelAnimationFrame = function(frameId) {
-const record = frameRecords.get(frameId);
-pausedFrameCallbacks.delete(frameId);
-if (record && typeof record.nativeFrameId !== 'undefined') {
-nativeCancelAnimationFrame(record.nativeFrameId);
-}
-frameRecords.delete(frameId);
-};
-window.setInterval = function(callback, delay) {
-const args = Array.prototype.slice.call(arguments, 2);
-return nativeSetInterval(function() {
-if (paused) return;
-callback.apply(this, args);
-}, delay);
-};
-const flushPausedFrames = function() {
-const callbacks = Array.from(pausedFrameCallbacks.entries());
-pausedFrameCallbacks.clear();
-callbacks.forEach(function(entry) {
-const frameId = entry[0];
-const callback = entry[1];
-const nativeFrameId = nativeRequestAnimationFrame(function(timestamp) {
-frameRecords.delete(frameId);
-callback(timestamp);
-});
-frameRecords.set(frameId, { nativeFrameId: nativeFrameId });
-});
-};
-const setPaused = function(nextPaused) {
-const shouldPause = Boolean(nextPaused);
-if (paused === shouldPause) return;
-paused = shouldPause;
-document.documentElement.toggleAttribute('data-aura-preview-paused', paused);
-if (!paused) {
-flushPausedFrames();
-}
-};
-window.__auraPreviewPerformanceController = {
-setPaused: setPaused,
-get paused() {
-return paused;
-}
-};
-window.addEventListener('message', function(event) {
-if (event.source !== window.parent) return;
-if (!event.data || event.data.type !== 'aura-preview-performance-mode') return;
-setPaused(event.data.paused);
-});
-})();
-<\/script>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Meet the NIVO One Creator Kit: a pocket-sized 4K camera and wireless microphone system for creators. Film smooth video, capture clear sound, and create anywhere.">
-<title>NIVO — Pocket Creator Camera &amp; Wireless Microphone</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"><\/script>
-<script>
-tailwind.config = {
-theme: {
-extend: {
-colors: { ink: '#08090A', acid: '#C8FF3D' },
-fontFamily: {
-sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-display: ['"Inter Tight"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-},
-},
-},
-};
-<\/script>
-<script src="https://unpkg.com/lucide@latest"><\/script>
-<style>
-:root { --acid: #C8FF3D; --ink: #08090A; }
-html { -webkit-font-smoothing: antialiased; }
-body { overscroll-behavior-y: none; }
-/* Lenis */
-html.lenis, html.lenis body { height: auto; }
-.lenis.lenis-smooth { scroll-behavior: auto !important; }
-.lenis.lenis-stopped { overflow: hidden; }
-.font-display { font-family: "Inter Tight", Inter, ui-sans-serif, system-ui, sans-serif; }
-/* ---------- Reveal primitives (only hidden when JS+GSAP are live) ---------- */
-.js [data-reveal],
-.js [data-fade],
-.js [data-stagger] > * { opacity: 0; }
-.js [data-clip] { clip-path: inset(0 0 100% 0); }
-/* line masks used by the text splitter */
-.line-mask { display: block; overflow: hidden; }
-.line-inner { display: block; will-change: transform; }
-.word { display: inline-block; white-space: pre; }
-/* ---------- Preloader ---------- */
-#preloader { position: fixed; inset: 0; z-index: 200; background: var(--ink); display: grid; place-items: center; }
-#preloader.is-done { pointer-events: none; }
-.pl-bar { height: 1px; background: rgba(255,255,255,.18); width: min(46vw, 420px); position: relative; overflow: hidden; }
-.pl-bar span { position: absolute; inset: 0; background: var(--acid); transform-origin: left center; transform: scaleX(0); }
-.pl-panel { position: fixed; inset: 0; z-index: 199; background: var(--ink); transform-origin: top center; }
-/* ---------- Cursor ---------- */
-#cursor, #cursorDot { position: fixed; top: 0; left: 0; z-index: 300; pointer-events: none; border-radius: 999px; mix-blend-mode: difference; opacity: 0; }
-#cursor { width: 40px; height: 40px; border: 1px solid rgba(255,255,255,.85); margin: -20px 0 0 -20px; }
-#cursorDot { width: 5px; height: 5px; background: #fff; margin: -2.5px 0 0 -2.5px; }
-#cursor .c-label { position:absolute; inset:0; display:grid; place-items:center; font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:#fff; opacity:0; }
-@media (hover: none), (pointer: coarse) { #cursor, #cursorDot { display: none; } }
-/* ---------- Grain + progress ---------- */
-#grain { position: fixed; inset: -50%; z-index: 150; pointer-events: none; opacity: .05; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
-#progress { position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 160; transform: scaleX(0); transform-origin: left center; background: var(--acid); }
-/* ---------- Marquee ---------- */
-.marquee { display: flex; width: max-content; will-change: transform; }
-.marquee > * { flex: none; }
-/* ---------- Aperture ---------- */
-#apSvg { will-change: transform; }
-#apSvg text { text-transform: none; }
-/* ---------- Typewriter (creator stories) ---------- */
-/* A hidden copy of the final text holds the exact box, and the typed text is
-laid over it — so wrapping is identical and nothing below ever shifts. */
-[data-type] { position: relative; }
-.type-ghost { visibility: hidden; }
-.type-live { position: absolute; left: 0; top: 0; width: 100%; }
-.type-line { display: inline; }
-.caret { display: inline-block; width: 1px; height: 1em; margin-left: 2px;
-background: currentColor; vertical-align: -0.12em; opacity: 0; }
-.caret.is-live { animation: caretBlink .9s steps(1, end) infinite; }
-@keyframes caretBlink { 0%, 49% { opacity: .9 } 50%, 100% { opacity: 0 } }
-/* ---------- FAQ ---------- */
-.faq-body { overflow: hidden; height: 0; }
-.faq-item.is-open .faq-plus { transform: rotate(135deg); }
-.faq-plus { transition: transform .5s cubic-bezier(.16,1,.3,1); }
-/* ---------- Misc ---------- */
-.hero-media { will-change: transform; }
-[data-magnetic] { will-change: transform; }
-.link-underline { background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1px; background-repeat: no-repeat; background-position: 0 100%; transition: background-size .5s cubic-bezier(.16,1,.3,1); }
-.link-underline:hover { background-size: 100% 1px; }
-.edge-fade { -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent); }
-@media (prefers-reduced-motion: reduce) {
-.js [data-reveal], .js [data-fade], .js [data-stagger] > * { opacity: 1 !important; }
-.js [data-clip] { clip-path: none !important; }
-#preloader, .pl-panel, #grain { display: none !important; }
-}
-<\/style><!-- aura-ga4-start -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-2M6V79H761"><\/script>
-<script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-2M6V79H761');
-<\/script>
-<!-- aura-ga4-end -->
-</head>
-
-<body class="bg-white font-sans text-neutral-900 antialiased selection:bg-lime-200 selection:text-neutral-950">
-
 <script>
   // Mark JS on so pre-animation hidden states apply. Removed again if GSAP never loads.
   document.documentElement.classList.add('js');
-<\/script>
+</script>
 <!-- Sentinel: display:none only once the Tailwind CDN has injected its utilities.
      Also safelists the classes the nav swaps in at runtime, so the CDN's JIT
      has already generated them before the first theme change. -->
@@ -1326,9 +1154,6 @@ gtag('config', 'G-2M6V79H761');
 </footer>
 
 <!-- libs -->
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"><\/script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"><\/script>
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"><\/script>
 <script>
 /* =========================================================
    NIVO — scroll experience
@@ -1356,6 +1181,9 @@ gtag('config', 'G-2M6V79H761');
   }
 
   gsap.registerPlugin(ScrollTrigger);
+  /* [규칙 6] .chuchumon-preview가 실제 스크롤 컨테이너 */
+  var scroller = document.querySelector('.chuchumon-preview') || window;
+  ScrollTrigger.defaults({ scroller: scroller });
   gsap.config({ nullTargetWarn: false });
 
   var EASE = 'expo.out';
@@ -1369,6 +1197,8 @@ gtag('config', 'G-2M6V79H761');
     easing: function (t) { return Math.min(1, 1.001 - Math.pow(2, -10 * t)); },
     smoothWheel: true,
     touchMultiplier: 1.6,
+    wrapper: scroller,
+    content: scroller !== window ? scroller.firstElementChild : document.documentElement,
   });
   lenis.on('scroll', ScrollTrigger.update);
   // Pinning changes document height after Lenis has cached its scroll limit,
@@ -1400,9 +1230,9 @@ gtag('config', 'G-2M6V79H761');
     nodes.forEach(function (node) {
       if (!node.nodeValue.trim()) return;
       var frag = document.createDocumentFragment();
-      node.nodeValue.split(/(\\s+)/).forEach(function (chunk) {
+      node.nodeValue.split(/(\s+)/).forEach(function (chunk) {
         if (!chunk) return;
-        if (/^\\s+$/.test(chunk)) { frag.appendChild(document.createTextNode(chunk)); return; }
+        if (/^\s+$/.test(chunk)) { frag.appendChild(document.createTextNode(chunk)); return; }
         var s = document.createElement('span');
         s.className = 'word';
         s.textContent = chunk;
@@ -1417,7 +1247,7 @@ gtag('config', 'G-2M6V79H761');
   // Re-runnable: the original text is stashed so a resize can re-wrap.
   function splitLines(el, force) {
     if (el.dataset.splitDone && !force) return Array.prototype.slice.call(el.querySelectorAll('.line-inner'));
-    if (!el.dataset.origText) el.dataset.origText = el.textContent.replace(/\\s+/g, ' ').trim();
+    if (!el.dataset.origText) el.dataset.origText = el.textContent.replace(/\s+/g, ' ').trim();
     if (force) { el.innerHTML = el.dataset.origText; el.removeAttribute('data-split-done'); delete el.dataset.splitDone; }
     var words = splitWords(el);
     if (!words.length) return [];
@@ -1502,7 +1332,7 @@ gtag('config', 'G-2M6V79H761');
      ========================================================= */
   function heroScroll() {
     gsap.timeline({
-      scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true },
+      scrollTrigger: { scroller: scroller, trigger: '#hero', start: 'top top', end: 'bottom top', scrub: true },
     })
       .to('#heroImg', { yPercent: 12, scale: 1.12, ease: 'none' }, 0)
       .to('#heroCopy', { yPercent: -22, opacity: 0, ease: 'none' }, 0)
@@ -1518,8 +1348,7 @@ gtag('config', 'G-2M6V79H761');
     var last = 0;
 
     // switch link colors when the header sits over a dark section
-    ScrollTrigger.create({
-      trigger: document.body, start: 'top top', end: 'bottom bottom',
+    ScrollTrigger.create({ scroller: scroller, trigger: scroller, start: 'top top', end: 'bottom bottom',
       onUpdate: function () {
         var over = false;
         darkSections.forEach(function (sec) {
@@ -1554,8 +1383,7 @@ gtag('config', 'G-2M6V79H761');
     }
 
     // condense into a floating pill + auto-hide going down
-    ScrollTrigger.create({
-      start: 'top -80',
+    ScrollTrigger.create({ scroller: scroller, start: 'top -80',
       onUpdate: function (self) {
         var y = self.scroll();
         var down = y > last && y > 320;
@@ -1645,35 +1473,35 @@ gtag('config', 'G-2M6V79H761');
       var lines = splitLines(el);
       gsap.fromTo(lines, { yPercent: 112 }, {
         yPercent: 0, duration: 1.25, ease: EASE, stagger: 0.08,
-        scrollTrigger: { trigger: triggerFor(el), start: 'top 88%' },
+        scrollTrigger: { scroller: scroller, trigger: triggerFor(el), start: 'top 88%' },
       });
     });
 
     document.querySelectorAll('[data-reveal]').forEach(function (el) {
       gsap.fromTo(el, { y: 24, opacity: 0 }, {
         y: 0, opacity: 1, duration: 1.0, ease: EASE,
-        scrollTrigger: { trigger: triggerFor(el), start: 'top 90%' },
+        scrollTrigger: { scroller: scroller, trigger: triggerFor(el), start: 'top 90%' },
       });
     });
 
     document.querySelectorAll('[data-stagger]').forEach(function (el) {
       gsap.fromTo(el.children, { y: 30, opacity: 0 }, {
         y: 0, opacity: 1, duration: 0.95, ease: EASE, stagger: 0.07,
-        scrollTrigger: { trigger: el, start: 'top 88%' },
+        scrollTrigger: { scroller: scroller, trigger: el, start: 'top 88%' },
       });
     });
 
     document.querySelectorAll('[data-clip]').forEach(function (el) {
       gsap.fromTo(el, { clipPath: 'inset(0 0 100% 0)' }, {
         clipPath: 'inset(0 0 0% 0)', duration: 1.5, ease: 'expo.out',
-        scrollTrigger: { trigger: el, start: 'top 86%' },
+        scrollTrigger: { scroller: scroller, trigger: el, start: 'top 86%' },
       });
     });
 
     document.querySelectorAll('[data-line]').forEach(function (el) {
       gsap.fromTo(el, { scaleX: 0 }, {
         scaleX: 1, duration: 1.6, ease: 'expo.out',
-        scrollTrigger: { trigger: el, start: 'top 92%' },
+        scrollTrigger: { scroller: scroller, trigger: el, start: 'top 92%' },
       });
     });
 
@@ -1681,7 +1509,7 @@ gtag('config', 'G-2M6V79H761');
     document.querySelectorAll('[data-parallax-img]').forEach(function (img) {
       gsap.fromTo(img, { yPercent: -6 }, {
         yPercent: 6, ease: 'none',
-        scrollTrigger: { trigger: img.parentElement, start: 'top bottom', end: 'bottom top', scrub: true },
+        scrollTrigger: { scroller: scroller, trigger: img.parentElement, start: 'top bottom', end: 'bottom top', scrub: true },
       });
     });
   }
@@ -1698,13 +1526,13 @@ gtag('config', 'G-2M6V79H761');
         { x: fromLeft ? -120 : 120, opacity: 0 },
         {
           x: 0, opacity: 1, duration: 1.5, ease: 'expo.out',
-          scrollTrigger: { trigger: card, start: 'top 82%' },
+          scrollTrigger: { scroller: scroller, trigger: card, start: 'top 82%' },
         });
     });
 
     document.querySelectorAll('[data-type]').forEach(function (el) {
       // source markup is indented, so collapse the whitespace first
-      var full = el.textContent.replace(/\\s+/g, ' ').trim();
+      var full = el.textContent.replace(/\s+/g, ' ').trim();
       if (!full) return;
 
       // A hidden ghost of the finished text holds the exact box (measuring a
@@ -1722,8 +1550,7 @@ gtag('config', 'G-2M6V79H761');
       var o = { i: 0 };
       var delay = parseFloat(el.getAttribute('data-type-delay')) || 0;
 
-      ScrollTrigger.create({
-        trigger: el, start: 'top 88%', once: true,
+      ScrollTrigger.create({ scroller: scroller, trigger: el, start: 'top 88%', once: true,
         onEnter: function () {
           gsap.delayedCall(delay, function () {
             caret.classList.add('is-live');
@@ -1751,7 +1578,7 @@ gtag('config', 'G-2M6V79H761');
       if (!words.length) return;
       gsap.fromTo(words, { yPercent: 55, opacity: 0 }, {
         yPercent: 0, opacity: 1, duration: 0.9, ease: 'power3.out', stagger: 0.014,
-        scrollTrigger: { trigger: el, start: 'top 90%' },
+        scrollTrigger: { scroller: scroller, trigger: el, start: 'top 90%' },
       });
     });
 
@@ -1759,8 +1586,7 @@ gtag('config', 'G-2M6V79H761');
       var end = parseInt(el.textContent.trim(), 10);
       if (isNaN(end)) return;
       var o = { v: 0 };
-      ScrollTrigger.create({
-        trigger: el, start: 'top 92%', once: true,
+      ScrollTrigger.create({ scroller: scroller, trigger: el, start: 'top 92%', once: true,
         onEnter: function () {
           gsap.to(o, {
             v: end, duration: 1.1, ease: 'power2.out',
@@ -1784,7 +1610,7 @@ gtag('config', 'G-2M6V79H761');
     gsap.set(words, { opacity: 0.12 });
     gsap.to(words, {
       opacity: 1, ease: 'none', stagger: 1,
-      scrollTrigger: { trigger: el, start: 'top 78%', end: 'bottom 55%', scrub: 0.6 },
+      scrollTrigger: { scroller: scroller, trigger: el, start: 'top 78%', end: 'bottom 55%', scrub: 0.6 },
     });
   }
 
@@ -1796,8 +1622,7 @@ gtag('config', 'G-2M6V79H761');
       var end = parseFloat(el.getAttribute('data-count'));
       var suffix = el.getAttribute('data-suffix') || '';
       var obj = { v: 0 };
-      ScrollTrigger.create({
-        trigger: el, start: 'top 90%', once: true,
+      ScrollTrigger.create({ scroller: scroller, trigger: el, start: 'top 90%', once: true,
         onEnter: function () {
           gsap.to(obj, {
             v: end, duration: 1.8, ease: 'power3.out',
@@ -1817,8 +1642,7 @@ gtag('config', 'G-2M6V79H761');
       if (i === cards.length - 1) return;
       gsap.to(card.firstElementChild, {
         scale: 0.9, yPercent: -4, filter: 'brightness(0.82)', ease: 'none',
-        scrollTrigger: {
-          trigger: cards[i + 1],
+        scrollTrigger: { scroller: scroller, trigger: cards[i + 1],
           start: 'top bottom',
           end: 'top 18%',
           scrub: true,
@@ -1976,7 +1800,7 @@ gtag('config', 'G-2M6V79H761');
     preload();
   });
 })();
-<\/script>
+</script>
 
 <script>
 /* =========================================================
@@ -2040,8 +1864,7 @@ gtag('config', 'G-2M6V79H761');
     var tween = gsap.to(trackEl, {
       x: function () { distance = getDistance(); return -distance; },
       ease: 'none',
-      scrollTrigger: {
-        trigger: section,
+      scrollTrigger: { scroller: scroller, trigger: section,
         start: 'top top',
         end: function () { return '+=' + getDistance(); },
         pin: true,
@@ -2063,8 +1886,7 @@ gtag('config', 'G-2M6V79H761');
     trackEl.querySelectorAll('figure img').forEach(function (img, i) {
       gsap.fromTo(img, { xPercent: -4 }, {
         xPercent: 4, ease: 'none',
-        scrollTrigger: {
-          trigger: section, start: 'top top',
+        scrollTrigger: { scroller: scroller, trigger: section, start: 'top top',
           end: function () { return '+=' + getDistance(); },
           scrub: true, invalidateOnRefresh: true,
         },
@@ -2183,8 +2005,7 @@ gtag('config', 'G-2M6V79H761');
     var pctEl = document.getElementById('apPct');
 
     var tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: pin,
+      scrollTrigger: { scroller: scroller, trigger: pin,
         start: 'top top',
         end: '+=220%',
         pin: true,
@@ -2239,11 +2060,11 @@ gtag('config', 'G-2M6V79H761');
     var lines = el.querySelectorAll('.line-inner');
     gsap.fromTo(lines, { yPercent: 108, rotate: 3 }, {
       yPercent: 0, rotate: 0, duration: 1.4, ease: 'expo.out', stagger: 0.1,
-      scrollTrigger: { trigger: el, start: 'top 86%' },
+      scrollTrigger: { scroller: scroller, trigger: el, start: 'top 86%' },
     });
     gsap.to(el, {
       yPercent: -10, ease: 'none',
-      scrollTrigger: { trigger: el.parentElement, start: 'top bottom', end: 'bottom top', scrub: true },
+      scrollTrigger: { scroller: scroller, trigger: el.parentElement, start: 'top bottom', end: 'bottom top', scrub: true },
     });
   }
 
@@ -2255,7 +2076,7 @@ gtag('config', 'G-2M6V79H761');
     if (!word) return;
     gsap.fromTo(word, { yPercent: 40, opacity: 0 }, {
       yPercent: 0, opacity: 1, ease: 'none',
-      scrollTrigger: { trigger: word, start: 'top bottom', end: 'bottom bottom', scrub: true },
+      scrollTrigger: { scroller: scroller, trigger: word, start: 'top bottom', end: 'bottom bottom', scrub: true },
     });
   }
 
@@ -2265,7 +2086,7 @@ gtag('config', 'G-2M6V79H761');
   function progress() {
     gsap.to('#progress', {
       scaleX: 1, ease: 'none',
-      scrollTrigger: { trigger: document.body, start: 'top top', end: 'bottom bottom', scrub: 0.3 },
+      scrollTrigger: { scroller: scroller, trigger: scroller, start: 'top top', end: 'bottom bottom', scrub: 0.3 },
     });
   }
 
@@ -2298,7 +2119,7 @@ gtag('config', 'G-2M6V79H761');
     window.addEventListener('load', function () { ScrollTrigger.refresh(); });
   };
 })();
-<\/script>
+</script>
 
 <script data-aura-video-controller="true">
 (function () {
@@ -2367,233 +2188,136 @@ gtag('config', 'G-2M6V79H761');
   } else {
     setupVideos();
   }
-})();<\/script></body></html>
+})();</script>
+</div>
+
+
 <script>
-/* ============================================================
-   추추몬 AI — postMessage 수신 스크립트
-   편집 패널에서 보낸 데이터를 받아 DOM 값만 교체
-   (원본 HTML/JS/CSS/기능 일체 변경 없음)
-   ============================================================ */
-(function () {
-  function applyData(data) {
-    /* 공지 바 */
-    var annDivs = document.querySelectorAll('#live-announce .marquee > div:first-child span:not(.opacity-40)');
-    if (annDivs.length >= 4) {
-      if (data.announce1 != null) annDivs[0].textContent = data.announce1;
-      if (data.announce2 != null) annDivs[1].textContent = data.announce2;
-      if (data.announce3 != null) annDivs[2].textContent = data.announce3;
-      if (data.announce4 != null) annDivs[3].textContent = data.announce4;
-    }
+/* [규칙 3] applyToPreview: .chuchumon-preview 내부 DOM만 조작 */
+function applyToPreview(data) {
+  var preview = document.querySelector('.chuchumon-preview');
+  if (!preview) return;
 
-    /* 히어로 배경 영상 */
-    if (data.heroVideoUrl != null) {
-      var vid = document.getElementById('heroImg');
-      if (vid && vid.getAttribute('src') !== data.heroVideoUrl) {
-        vid.setAttribute('src', data.heroVideoUrl);
-        vid.load();
-      }
-    }
+  /* 공지 바 */
+  var annEls = preview.querySelectorAll('#live-announce .marquee > div:first-child span:not(.opacity-40)');
+  if (data.announce1 !== undefined && annEls[0]) annEls[0].textContent = data.announce1;
+  if (data.announce2 !== undefined && annEls[1]) annEls[1].textContent = data.announce2;
+  if (data.announce3 !== undefined && annEls[2]) annEls[2].textContent = data.announce3;
+  if (data.announce4 !== undefined && annEls[3]) annEls[3].textContent = data.announce4;
 
-    /* 히어로 eyebrow 텍스트 (heroRule span 보존) */
-    if (data.heroEyebrow != null) {
-      var p = document.querySelector('#heroCopy p');
-      if (p) {
-        var rule = document.getElementById('heroRule');
-        p.textContent = data.heroEyebrow;
-        if (rule) p.insertBefore(rule, p.firstChild);
-      }
-    }
-
-    /* 히어로 제목 */
-    if (data.heroTitle != null) {
-      var h1 = document.querySelector('#heroCopy h1');
-      if (h1) h1.textContent = data.heroTitle;
-    }
-
-    /* 히어로 설명 */
-    if (data.heroDesc != null) {
-      var desc = document.querySelector('#heroCopy p.mt-8');
-      if (desc) desc.textContent = data.heroDesc;
-    }
-
-    /* 히어로 버튼 1 */
-    if (data.heroBtn1 != null) {
-      var btn1 = document.querySelector('#heroCopy a[href="#lineup"]');
-      if (btn1) {
-        var span = btn1.querySelector('span.block');
-        var icon = btn1.querySelector('i');
-        if (span) { span.textContent = data.heroBtn1; }
-        else {
-          btn1.textContent = data.heroBtn1 + ' ';
-          if (icon) btn1.appendChild(icon);
-        }
-      }
-    }
-
-    /* 히어로 버튼 2 */
-    if (data.heroBtn2 != null) {
-      var btn2 = document.querySelector('#heroCopy a[href="#gallery"]');
-      if (btn2) {
-        var icon = btn2.querySelector('i');
-        btn2.textContent = data.heroBtn2 + ' ';
-        if (icon) btn2.appendChild(icon);
-      }
-    }
-
-    /* 매니페스토 */
-    if (data.manifesto != null) {
-      var el = document.getElementById('manifestoText');
-      if (el) el.textContent = data.manifesto;
-    }
-
-    /* 제품 라인업 이미지 */
-    var lineupImgs = document.querySelectorAll('#lineup img[data-parallax-img]');
-    if (data.prod1Img != null && lineupImgs[0]) lineupImgs[0].setAttribute('src', data.prod1Img);
-    if (data.prod2Img != null && lineupImgs[1]) lineupImgs[1].setAttribute('src', data.prod2Img);
-    if (data.prod3Img != null && lineupImgs[2]) lineupImgs[2].setAttribute('src', data.prod3Img);
-
-    /* 제품 가격 */
-    var lineupCards = document.querySelectorAll('#lineup article');
-    if (data.prod1Price != null && lineupCards[0]) {
-      var p = lineupCards[0].querySelector('.tabular-nums');
-      if (p) p.textContent = data.prod1Price;
-    }
-    if (data.prod2Price != null && lineupCards[1]) {
-      var p = lineupCards[1].querySelector('.tabular-nums');
-      if (p) p.textContent = data.prod2Price;
-    }
-    if (data.prod3Price != null && lineupCards[2]) {
-      var p = lineupCards[2].querySelector('.tabular-nums');
-      if (p) p.textContent = data.prod3Price;
-    }
-
-    /* 갤러리 이미지 */
-    var galImgs = document.querySelectorAll('#hTrack img[data-parallax-img]');
-    if (data.gal1Img != null && galImgs[0]) galImgs[0].setAttribute('src', data.gal1Img);
-    if (data.gal2Img != null && galImgs[1]) galImgs[1].setAttribute('src', data.gal2Img);
-    if (data.gal3Img != null && galImgs[2]) galImgs[2].setAttribute('src', data.gal3Img);
-    if (data.gal4Img != null && galImgs[3]) galImgs[3].setAttribute('src', data.gal4Img);
-
-    /* 조리개 섹션 */
-    if (data.apBackImg != null) {
-      var el = document.getElementById('apBack');
-      if (el) el.setAttribute('src', data.apBackImg);
-    }
-    if (data.apTitle != null) {
-      var el = document.getElementById('apTitle');
-      if (el) el.textContent = data.apTitle;
-    }
-    if (data.apCopy != null) {
-      var el = document.getElementById('apCopy');
-      if (el) el.textContent = data.apCopy;
-    }
-
-    /* 리뷰 섹션 표시/숨김 */
-    if (data.showReviews != null) {
-      var el = document.getElementById('reviews');
-      if (el) el.style.display = data.showReviews ? '' : 'none';
-    }
+  /* 히어로 섹션 */
+  if (data.heroTitle !== undefined) {
+    var el = preview.querySelector('#hero h1');
+    if (el) el.textContent = data.heroTitle;
+  }
+  if (data.heroDesc !== undefined) {
+    var el = preview.querySelector('#hero p');
+    if (el) el.textContent = data.heroDesc;
+  }
+  if (data.heroVideoUrl !== undefined) {
+    var el = preview.querySelector('#hero video');
+    if (el) { el.setAttribute('src', data.heroVideoUrl); el.load(); }
+  }
+  if (data.heroBtn1 !== undefined) {
+    var btns = preview.querySelectorAll('#hero a');
+    if (btns[0]) btns[0].textContent = data.heroBtn1;
+  }
+  if (data.heroBtn2 !== undefined) {
+    var btns = preview.querySelectorAll('#hero a');
+    if (btns[1]) btns[1].textContent = data.heroBtn2;
   }
 
-  /* postMessage 수신 */
-  window.addEventListener('message', function (e) {
-    if (!e.data || e.data.type !== 'CHUCHUMON_UPDATE') return;
-    applyData(e.data.data);
+  /* 매니페스토 */
+  if (data.manifesto !== undefined) {
+    var el = preview.querySelector('#manifesto p, #manifesto blockquote, [data-manifesto]');
+    if (el) el.textContent = data.manifesto;
+  }
+
+  /* 제품 이미지 & 가격 */
+  ['prod1','prod2','prod3'].forEach(function(p, idx) {
+    if (data[p+'Img'] !== undefined) {
+      var imgs = preview.querySelectorAll('#products img, [data-product-img]');
+      if (imgs[idx]) imgs[idx].setAttribute('src', data[p+'Img']);
+    }
+    if (data[p+'Price'] !== undefined) {
+      var prices = preview.querySelectorAll('[data-price], .price');
+      if (prices[idx]) prices[idx].textContent = data[p+'Price'];
+    }
   });
 
-  /* 부모 창에 로드 완료 알림 */
-  window.addEventListener('load', function () {
-    window.parent.postMessage({ type: 'CHUCHUMON_READY' }, '*');
+  /* 갤러리 이미지 */
+  ['gal1Img','gal2Img','gal3Img','gal4Img'].forEach(function(key, idx) {
+    if (data[key] !== undefined) {
+      var imgs = preview.querySelectorAll('#gallery img, [data-gallery-img]');
+      if (imgs[idx]) imgs[idx].setAttribute('src', data[key]);
+    }
   });
-})();
-<\/script>
-</body>
-</html>
-`;
 
-/* Blob URL 생성 및 iframe 주입 */
-var blob = new Blob([PREVIEW_HTML], { type: 'text/html; charset=utf-8' });
-var blobUrl = URL.createObjectURL(blob);
-var iframe = document.getElementById('previewFrame');
-var iframeReady = false;
-var pendingData = null;
-
-iframe.src = blobUrl;
-
-iframe.onload = function () {
-  iframeReady = true;
-  if (pendingData) { postToIframe(pendingData); pendingData = null; }
-};
-
-/* iframe 로드 완료 감지 */
-window.addEventListener('message', function (e) {
-  if (!e.data) return;
-  if (e.data.type === 'CHUCHUMON_READY') {
-    iframeReady = true;
-    if (pendingData) { postToIframe(pendingData); pendingData = null; }
+  /* 기술 섹션 */
+  if (data.apBackImg !== undefined) {
+    var el = preview.querySelector('[data-aperture-bg], #aperture');
+    if (el) el.style.backgroundImage = 'url(' + data.apBackImg + ')';
   }
-  if (e.data.type === 'CHUCHUMON_UPDATE') {
-    window.parent.postMessage(e.data, '*');
+  if (data.apTitle !== undefined) {
+    var el = preview.querySelector('[data-aperture-title], #aperture h2');
+    if (el) el.textContent = data.apTitle;
   }
-});
+  if (data.apCopy !== undefined) {
+    var el = preview.querySelector('[data-aperture-copy], #aperture p');
+    if (el) el.textContent = data.apCopy;
+  }
 
-/* 타임아웃 폴백 (5초) */
-setTimeout(function () {
-  iframeReady = true;
-  if (pendingData) { postToIframe(pendingData); pendingData = null; }
-}, 1000);
-
-/* [규칙 2] iframe으로 postMessage 전송 */
-function postToIframe(data) {
-  if (iframe.contentWindow) {
-    iframe.contentWindow.postMessage({ type: 'CHUCHUMON_UPDATE', data: data }, '*');
+  /* 리뷰 섹션 표시/숨김 [규칙 8] */
+  if (data.showReviews !== undefined) {
+    var el = preview.querySelector('#reviews');
+    if (el) el.classList.toggle('hidden', !data.showReviews);
   }
 }
 
-/* 편집 패널 → 데이터 수집 → iframe 전송 */
+/* [규칙 2] sendUpdate */
 function sendUpdate() {
   var data = collectData();
   /* [규칙 4] 속성 동기화 */
-  document.querySelectorAll('.chuchumon-editor input[type="text"], .chuchumon-editor textarea').forEach(function (el) {
+  document.querySelectorAll('.chuchumon-editor input[type="text"], .chuchumon-editor textarea').forEach(function(el) {
     el.setAttribute('value', el.value);
   });
-  document.querySelectorAll('.chuchumon-editor input[type="checkbox"]').forEach(function (el) {
+  document.querySelectorAll('.chuchumon-editor input[type="checkbox"]').forEach(function(el) {
     if (el.checked) el.setAttribute('checked', 'checked');
     else el.removeAttribute('checked');
   });
-  /* [규칙 2] 플랫폼 브로커로도 전송 */
+  /* [규칙 3] 미리보기 DOM 직접 업데이트 */
+  applyToPreview(data);
+  /* [규칙 2] 플랫폼 브로커로 전송 */
   window.parent.postMessage({ type: 'CHUCHUMON_UPDATE', data: data }, '*');
-  if (iframeReady) { postToIframe(data); } else { pendingData = data; }
 }
 
-/* 편집 패널 모든 필드 값 수집 */
 function collectData() {
   var data = {};
-  document.querySelectorAll('.chuchumon-editor input[type="text"]').forEach(function (el) { if (el.name) data[el.name] = el.value; });
-  document.querySelectorAll('.chuchumon-editor textarea').forEach(function (el) { if (el.name) data[el.name] = el.value; });
-  document.querySelectorAll('.chuchumon-editor input[type="checkbox"]').forEach(function (el) { if (el.name) data[el.name] = el.checked; });
+  document.querySelectorAll('.chuchumon-editor input[type="text"]').forEach(function(el) { if (el.name) data[el.name] = el.value; });
+  document.querySelectorAll('.chuchumon-editor textarea').forEach(function(el) { if (el.name) data[el.name] = el.value; });
+  document.querySelectorAll('.chuchumon-editor input[type="checkbox"]').forEach(function(el) { if (el.name) data[el.name] = el.checked; });
   return data;
 }
 
-/* 섹션 접기/펼치기 */
 function toggleSection(titleEl) {
   titleEl.classList.toggle('collapsed');
   var content = titleEl.nextElementSibling;
   if (content) content.classList.toggle('hidden');
 }
 
-/* 플랫폼에서 데이터 수신 시 편집 패널 값 업데이트 */
-window.addEventListener('message', function (e) {
+/* 플랫폼에서 데이터 수신 */
+window.addEventListener('message', function(e) {
   if (!e.data || e.data.type !== 'CHUCHUMON_LOAD') return;
-  var data = e.data.data;
-  Object.keys(data).forEach(function (key) {
+  var d = e.data.data;
+  Object.keys(d).forEach(function(key) {
     var el = document.querySelector('.chuchumon-editor [name="' + key + '"]');
     if (!el) return;
-    if (el.type === 'checkbox') el.checked = !!data[key];
-    else el.value = data[key];
+    if (el.type === 'checkbox') el.checked = !!d[key];
+    else el.value = d[key];
   });
   sendUpdate();
 });
 </script>
+
 </body>
 </html>
